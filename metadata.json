@@ -1,0 +1,6 @@
+{
+  "name": "AuraShop",
+  "description": "A premium offline-first e-commerce app with Material 3 design, biometric authentication, onboarding, and shopping flows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
