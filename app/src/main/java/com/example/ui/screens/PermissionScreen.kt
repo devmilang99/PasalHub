@@ -4,10 +4,8 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -76,7 +73,7 @@ fun PermissionScreen(
         )
     )
 
-    var currentStep by remember { mutableStateOf(0) }
+    var currentStep by remember { mutableIntStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -100,6 +97,16 @@ fun PermissionScreen(
         2 -> storageGranted
         3 -> notificationGranted
         else -> false
+    }
+
+    LaunchedEffect(currentStep, currentPermissionGranted) {
+        if (currentPermissionGranted) {
+            if (currentStep < steps.lastIndex) {
+                currentStep++
+            } else {
+                onNavigateNext()
+            }
+        }
     }
 
     Scaffold(
@@ -260,51 +267,38 @@ fun PermissionScreen(
                     }
                 }
 
-                // Call to action button
+                // Call-to-action button
                 Button(
                     onClick = {
-                        if (currentPermissionGranted) {
-                            if (currentStep < steps.lastIndex) {
-                                currentStep++
+                        // Grant real system permission
+                        val permissionsToRequest = when (currentStep) {
+                            0 -> arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            1 -> arrayOf(Manifest.permission.CAMERA)
+                            2 -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                arrayOf(
+                                    Manifest.permission.READ_MEDIA_IMAGES,
+                                    Manifest.permission.READ_MEDIA_VIDEO
+                                )
                             } else {
-                                onNavigateNext()
+                                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
                             }
+                            3 -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                emptyArray()
+                            }
+                            else -> emptyArray()
+                        }
+                        
+                        if (permissionsToRequest.isNotEmpty()) {
+                            permissionLauncher.launch(permissionsToRequest)
                         } else {
-                            // Grant real system permission
-                            val permissionsToRequest = when (currentStep) {
-                                0 -> arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                                1 -> arrayOf(Manifest.permission.CAMERA)
-                                2 -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    arrayOf(
-                                        Manifest.permission.READ_MEDIA_IMAGES,
-                                        Manifest.permission.READ_MEDIA_VIDEO
-                                    )
-                                } else {
-                                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                                }
-                                3 -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    emptyArray()
-                                }
-                                else -> emptyArray()
-                            }
-                            
-                            if (permissionsToRequest.isNotEmpty()) {
-                                permissionLauncher.launch(permissionsToRequest)
-                            } else {
-                                // Fallback for permissions that don't need runtime request on some versions
-                                when (currentStep) {
-                                    0 -> viewModel.setLocationPermission(context, true)
-                                    1 -> viewModel.setCameraPermission(context, true)
-                                    2 -> viewModel.setStoragePermission(context, true)
-                                    3 -> viewModel.setNotificationPermission(context, true)
-                                }
-                                if (currentStep < steps.lastIndex) {
-                                    currentStep++
-                                } else {
-                                    onNavigateNext()
-                                }
+                            // Fallback for permissions that don't need runtime request on some versions
+                            when (currentStep) {
+                                0 -> viewModel.setLocationPermission(context, true)
+                                1 -> viewModel.setCameraPermission(context, true)
+                                2 -> viewModel.setStoragePermission(context, true)
+                                3 -> viewModel.setNotificationPermission(context, true)
                             }
                         }
                     },
@@ -314,18 +308,12 @@ fun PermissionScreen(
                         .testTag("permission_next_button"),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (currentPermissionGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
+                        containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text(
-                        text = if (!currentPermissionGranted) {
-                            "Grant Permission"
-                        } else if (currentStep == steps.lastIndex) {
-                            "Finish Setup"
-                        } else {
-                            "Next Step"
-                        },
+                        text = "Grant Permission",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )

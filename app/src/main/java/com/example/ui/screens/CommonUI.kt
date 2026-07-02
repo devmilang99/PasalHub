@@ -244,7 +244,7 @@ fun PasalHubAlertDialog(
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = textColor, contentColor = bgColor)
+                colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color.White else Color(0xFF0C1324), contentColor = if (isDark) Color.Black else Color.White)
             ) {
                 Text(confirmButtonText, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
             }
@@ -259,6 +259,154 @@ fun PasalHubAlertDialog(
                 }
             }
         }
+    )
+}
+
+@Composable
+fun PasalHubAuthDialog(
+    onDismissRequest: () -> Unit,
+    state: AuthDialogState,
+    isDark: Boolean = true
+) {
+    val bgColor = if (isDark) Color(0xFF121212) else Color(0xFFFDFBF7)
+    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
+    val textMuted = if (isDark) Color.Gray else Color(0xFF64748B)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "auth_loading")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loading_scale"
+    )
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.8f, animationSpec = tween(400, easing = FastOutSlowInEasing)),
+            exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f, animationSpec = tween(300))
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(32.dp),
+                color = bgColor,
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .then(
+                                if (state is AuthDialogState.Loading) Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+                                else Modifier
+                            )
+                            .clip(CircleShape)
+                            .background(state.color.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when (state) {
+                            is AuthDialogState.Loading -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(40.dp),
+                                    color = state.color,
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    imageVector = state.icon,
+                                    contentDescription = null,
+                                    tint = state.color,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = state.title,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = textColor,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = state.message,
+                        fontSize = 15.sp,
+                        color = textMuted,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+
+                    if (state !is AuthDialogState.Loading) {
+                        Button(
+                            onClick = onDismissRequest,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (state is AuthDialogState.Success) state.color else textColor,
+                                contentColor = if (state is AuthDialogState.Success) Color.White else bgColor
+                            )
+                        ) {
+                            Text(
+                                if (state is AuthDialogState.Success) "CONTINUE" else "TRY AGAIN",
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+sealed class AuthDialogState(
+    val title: String,
+    val message: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val color: Color
+) {
+    class Loading(action: String) : AuthDialogState(
+        title = "Processing",
+        message = "Please wait while we secure your $action...",
+        icon = Icons.Default.Sync,
+        color = Color(0xFF3B82F6)
+    )
+    class Success(action: String) : AuthDialogState(
+        title = "Success!",
+        message = "Your $action was successful. Welcome to Pasal Hub!",
+        icon = Icons.Default.CheckCircle,
+        color = Color(0xFF10B981)
+    )
+    class Error(message: String) : AuthDialogState(
+        title = "Authentication Failed",
+        message = message,
+        icon = Icons.Default.Error,
+        color = Color(0xFFEF4444)
     )
 }
 

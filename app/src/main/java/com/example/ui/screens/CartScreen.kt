@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.local.CartItem
@@ -38,6 +40,9 @@ fun CartScreen(viewModel: MainViewModel, onBack: () -> Unit, onOrderPlaced: () -
     val currentUser by viewModel.currentUser.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()
     val context = LocalContext.current
+
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
     // Set of selected item IDs. By default, all items are selected.
     var selectedItemIds by remember(cartItemsList) { 
@@ -71,489 +76,132 @@ fun CartScreen(viewModel: MainViewModel, onBack: () -> Unit, onOrderPlaced: () -
             .fillMaxSize()
             .background(bgColor)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Upper Title & Selection Controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = textColor
-                    )
-                }
-                
-                Text(
-                    text = "My Shopping Cart",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (cartItemsList.isNotEmpty()) {
-                    IconButton(
-                        onClick = { showDeleteConfirmDialog = true },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(if (isDark) Color(0xFF231415) else Color(0xFFFFEBEE))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Selected",
-                            tint = if (isDark) Color(0xFFE57373) else Color(0xFFC62828),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            CartHeader(onBack, isDark, textColor, cartItemsList.isNotEmpty(), onDeleteClick = { showDeleteConfirmDialog = true })
 
             if (cartItemsList.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Outlined.LocalMall,
-                            contentDescription = "Empty Cart Icon",
-                            modifier = Modifier.size(72.dp),
-                            tint = mutedTextColor.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Your shopping bag is empty.",
-                            fontWeight = FontWeight.Bold,
-                            color = textColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "Add some items from the main tab to get started.",
-                            fontSize = 13.sp,
-                            color = mutedTextColor
-                        )
-                    }
-                }
+                EmptyCartView(textColor, mutedTextColor)
             } else {
-                // Selection row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val allSelected = selectedItemIds.size == cartItemsList.size
+                if (isExpanded) {
+                    // Tablet Layout
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable {
-                            selectedItemIds = if (allSelected) emptySet() else cartItemsList.map { it.productId }.toSet()
-                        }
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(32.dp)
                     ) {
-                        Checkbox(
-                            checked = allSelected && cartItemsList.isNotEmpty(),
-                            onCheckedChange = { checked ->
-                                selectedItemIds = if (checked) cartItemsList.map { it.productId }.toSet() else emptySet()
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = Color(0xFF4CAF50),
-                                uncheckedColor = mutedTextColor
-                            ),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (allSelected) "Deselect All" else "Select All",
-                            fontSize = 14.sp,
-                            color = textColor,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Text(
-                        text = "${selectedItemIds.size}/${cartItemsList.size} items",
-                        fontSize = 13.sp,
-                        color = mutedTextColor
-                    )
-                }
-
-                // List of cart items (Scrollable)
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(cartItemsList) { item ->
-                        val isChecked = selectedItemIds.contains(item.productId)
-                        CartItemRow(
-                            item = item,
-                            isChecked = isChecked,
-                            onCheckedChange = { checked ->
-                                selectedItemIds = if (checked) {
-                                    selectedItemIds + item.productId
-                                } else {
-                                    selectedItemIds - item.productId
+                        // Left: Cart Items
+                        Column(modifier = Modifier.weight(1.5f)) {
+                            SelectionControls(
+                                selectedCount = selectedItemIds.size,
+                                totalCount = cartItemsList.size,
+                                allSelected = selectedItemIds.size == cartItemsList.size,
+                                onSelectAll = { checked ->
+                                    selectedItemIds = if (checked) cartItemsList.map { it.productId }.toSet() else emptySet()
+                                },
+                                textColor = textColor,
+                                mutedTextColor = mutedTextColor
+                            )
+                            LazyColumn(
+                                contentPadding = PaddingValues(bottom = 32.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(cartItemsList) { item ->
+                                    CartItemRow(
+                                        item = item,
+                                        isChecked = selectedItemIds.contains(item.productId),
+                                        onCheckedChange = { checked ->
+                                            selectedItemIds = if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
+                                        },
+                                        onIncrease = { viewModel.increaseQuantity(item) },
+                                        onDecrease = { viewModel.decreaseQuantity(item) },
+                                        onDelete = { viewModel.deleteCartItem(item) },
+                                        isDark = isDark
+                                    )
                                 }
-                            },
-                            onIncrease = { viewModel.increaseQuantity(item) },
-                            onDecrease = { viewModel.decreaseQuantity(item) },
-                            onDelete = { viewModel.deleteCartItem(item) },
-                            isDark = isDark
-                        )
-                    }
-                }
+                            }
+                        }
 
-                // Bottom Sheet / Docked Summary Panel
-                val selectedItems = cartItemsList.filter { selectedItemIds.contains(it.productId) }
-                val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
-                
-                // Calculate voucher deduction
-                val discountAmount = if (itemsSubtotal > 0.0) {
-                    if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 300.0) {
-                        itemsSubtotal
-                    } else {
-                        selectedVoucher.second
+                        // Right: Summary
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 16.dp)
+                        ) {
+                            val selectedItems = cartItemsList.filter { selectedItemIds.contains(it.productId) }
+                            CartSummaryCard(
+                                selectedItems = selectedItems,
+                                isDark = isDark,
+                                cardColor = cardColor,
+                                textColor = textColor,
+                                mutedTextColor = mutedTextColor,
+                                selectedVoucher = selectedVoucher,
+                                onVoucherChange = { selectedVoucher = it },
+                                vouchers = vouchers,
+                                isVoucherExpanded = isVoucherExpanded,
+                                onVoucherExpandedChange = { isVoucherExpanded = it },
+                                selectedPaymentMethod = selectedPaymentMethod,
+                                onPaymentMethodChange = { selectedPaymentMethod = it },
+                                onCheckoutClick = {
+                                    if (selectedItems.isNotEmpty()) showCheckoutConfirmDialog = true
+                                    else viewModel.notificationEvent.tryEmit("Select an item first.")
+                                }
+                            )
+                        }
                     }
                 } else {
-                    0.0
-                }
-                
-                val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
-                val taxRate = 0.05 // 5% matching the image
-                val taxAmount = discountedSubtotal * taxRate
-                val finalTotal = discountedSubtotal + taxAmount
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding(),
-                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Voucher selection & Selected items avatars row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Voucher selection Box (Dropdown)
-                            Box(modifier = Modifier.weight(1.8f)) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(48.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isDark) Color(0xFF0F0F10) else Color(0xFFE2E4E9))
-                                        .clickable { isVoucherExpanded = true }
-                                        .padding(horizontal = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = if (selectedVoucher.first == "None") "Select a voucher" else "Voucher: ${selectedVoucher.first}",
-                                        fontSize = 13.sp,
-                                        color = if (selectedVoucher.first == "None") mutedTextColor else Color(0xFF4CAF50),
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Dropdown Arrow",
-                                        tint = mutedTextColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                
-                                DropdownMenu(
-                                    expanded = isVoucherExpanded,
-                                    onDismissRequest = { isVoucherExpanded = false },
-                                    modifier = Modifier.background(if (isDark) Color(0xFF1E1E20) else Color.White)
-                                ) {
-                                    vouchers.forEach { v ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        text = if (v.first == "None") "No Promo" else v.first,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 13.sp,
-                                                        color = textColor
-                                                    )
-                                                    if (v.second > 0) {
-                                                        Text(
-                                                            text = "-Rs. ${v.second.toInt()}",
-                                                            color = Color(0xFF4CAF50),
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 13.sp
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onClick = {
-                                                selectedVoucher = v
-                                                isVoucherExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            // Selected items avatars (Right side)
-                            if (selectedItems.isNotEmpty()) {
-                                Column(
-                                    modifier = Modifier.weight(1.2f),
-                                    horizontalAlignment = Alignment.End
-                                ) {
-                                    Text(
-                                        text = "Selected",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = mutedTextColor,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy((-8).dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        selectedItems.take(3).forEach { item ->
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.White)
-                                                    .border(1.dp, Color.Gray.copy(alpha = 0.3f), CircleShape)
-                                                    .padding(2.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                AsyncImage(
-                                                    model = ImageRequest.Builder(LocalContext.current)
-                                                        .data(item.image)
-                                                        .crossfade(true)
-                                                        .build(),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
-                                        }
-                                        if (selectedItems.size > 3) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9))
-                                                    .border(1.dp, textColor.copy(alpha = 0.8f), CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "+${selectedItems.size - 3}",
-                                                    fontSize = 9.sp,
-                                                    color = textColor,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.weight(1.2f))
-                            }
-                        }
-
-                        // Payment Options Row (Cash, Card, Pay)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val paymentOptions = listOf(
-                                Triple("Cash", Icons.Default.Money, "Cash on Delivery"),
-                                Triple("Card", Icons.Default.CreditCard, "Credit / Debit Card"),
-                                Triple("E-sewa", Icons.Default.Smartphone, "E-sewa")
-                            )
-                            paymentOptions.forEach { (label, icon, methodValue) ->
-                                val isSelected = selectedPaymentMethod == methodValue
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(46.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) Color(0xFF4CAF50) else (if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9)))
-                                    .clickable { selectedPaymentMethod = methodValue }
-                                    .padding(horizontal = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = label,
-                                            tint = if (isSelected) Color.White else mutedTextColor,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = label,
-                                            color = if (isSelected) Color.White else mutedTextColor,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Subtotal
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Subtotal",
-                                color = mutedTextColor,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = formatDecimalPrice(itemsSubtotal),
-                                color = textColor,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        // Tax (5%)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Tax (5%)",
-                                color = mutedTextColor,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = formatDecimalPrice(taxAmount),
-                                color = textColor,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        if (selectedVoucher.first != "None" && discountAmount > 0.0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.LocalOffer,
-                                        contentDescription = "Voucher Icon",
-                                        tint = Color(0xFF4CAF50),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Voucher Discount (${selectedVoucher.first})",
-                                        color = Color(0xFF4CAF50),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                                Text(
-                                    text = "-${formatDecimalPrice(discountAmount)}",
-                                    color = Color(0xFF4CAF50),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        HorizontalDivider(color = mutedTextColor.copy(alpha = 0.2f))
-
-                        // Total Estimate
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Total",
-                                color = textColor,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = formatPrice(finalTotal),
-                                color = Color(0xFF4CAF50),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-
-                        // "Checkout Now" button
-                        Button(
-                            onClick = {
-                                if (selectedItems.isNotEmpty()) {
-                                    showCheckoutConfirmDialog = true
-                                } else {
-                                    viewModel.notificationEvent.tryEmit("Please select at least one item to purchase.")
-                                }
+                    // Mobile Layout
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        SelectionControls(
+                            selectedCount = selectedItemIds.size,
+                            totalCount = cartItemsList.size,
+                            allSelected = selectedItemIds.size == cartItemsList.size,
+                            onSelectAll = { checked ->
+                                selectedItemIds = if (checked) cartItemsList.map { it.productId }.toSet() else emptySet()
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp)
-                                .testTag("checkout_selected_button"),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isDark) Color(0xFF0F0F10) else Color(0xFF0C1324),
-                                contentColor = Color.White
-                            ),
-                            enabled = selectedItems.isNotEmpty()
+                            textColor = textColor,
+                            mutedTextColor = mutedTextColor
+                        )
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Checkout Now",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = "Arrow Forward",
-                                    modifier = Modifier.size(16.dp)
+                            items(cartItemsList) { item ->
+                                CartItemRow(
+                                    item = item,
+                                    isChecked = selectedItemIds.contains(item.productId),
+                                    onCheckedChange = { checked ->
+                                        selectedItemIds = if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
+                                    },
+                                    onIncrease = { viewModel.increaseQuantity(item) },
+                                    onDecrease = { viewModel.decreaseQuantity(item) },
+                                    onDelete = { viewModel.deleteCartItem(item) },
+                                    isDark = isDark
                                 )
                             }
                         }
+                        
+                        val selectedItems = cartItemsList.filter { selectedItemIds.contains(it.productId) }
+                        CartSummaryCard(
+                            selectedItems = selectedItems,
+                            isDark = isDark,
+                            cardColor = cardColor,
+                            textColor = textColor,
+                            mutedTextColor = mutedTextColor,
+                            selectedVoucher = selectedVoucher,
+                            onVoucherChange = { selectedVoucher = it },
+                            vouchers = vouchers,
+                            isVoucherExpanded = isVoucherExpanded,
+                            onVoucherExpandedChange = { isVoucherExpanded = it },
+                            selectedPaymentMethod = selectedPaymentMethod,
+                            onPaymentMethodChange = { selectedPaymentMethod = it },
+                            onCheckoutClick = {
+                                if (selectedItems.isNotEmpty()) showCheckoutConfirmDialog = true
+                                else viewModel.notificationEvent.tryEmit("Select an item first.")
+                            }
+                        )
                     }
                 }
             }
@@ -630,6 +278,159 @@ fun CartScreen(viewModel: MainViewModel, onBack: () -> Unit, onOrderPlaced: () -
                 isDark = isDark
             )
         }
+    }
+}
+
+@Composable
+fun CartHeader(onBack: () -> Unit, isDark: Boolean, textColor: Color, hasItems: Boolean, onDeleteClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = textColor)
+        }
+        Text("My Shopping Cart", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = textColor, modifier = Modifier.weight(1f))
+        if (hasItems) {
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(if (isDark) Color(0xFF231415) else Color(0xFFFFEBEE))
+            ) {
+                Icon(Icons.Default.Delete, "Delete", tint = if (isDark) Color(0xFFE57373) else Color(0xFFC62828), modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyCartView(textColor: Color, mutedTextColor: Color) {
+    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.8f), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Outlined.LocalMall, null, modifier = Modifier.size(72.dp), tint = mutedTextColor.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Your shopping bag is empty.", fontWeight = FontWeight.Bold, color = textColor)
+            Text("Add some items from the main tab to get started.", fontSize = 13.sp, color = mutedTextColor)
+        }
+    }
+}
+
+@Composable
+fun SelectionControls(selectedCount: Int, totalCount: Int, allSelected: Boolean, onSelectAll: (Boolean) -> Unit, textColor: Color, mutedTextColor: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSelectAll(!allSelected) }) {
+            Checkbox(
+                checked = allSelected, onCheckedChange = onSelectAll,
+                colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50), uncheckedColor = mutedTextColor),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(if (allSelected) "Deselect All" else "Select All", fontSize = 14.sp, color = textColor, fontWeight = FontWeight.Medium)
+        }
+        Text("$selectedCount/$totalCount items", fontSize = 13.sp, color = mutedTextColor)
+    }
+}
+
+@Composable
+fun CartSummaryCard(
+    selectedItems: List<CartItem>, isDark: Boolean, cardColor: Color, textColor: Color, mutedTextColor: Color,
+    selectedVoucher: Pair<String, Double>, onVoucherChange: (Pair<String, Double>) -> Unit,
+    vouchers: List<Pair<String, Double>>, isVoucherExpanded: Boolean, onVoucherExpandedChange: (Boolean) -> Unit,
+    selectedPaymentMethod: String, onPaymentMethodChange: (String) -> Unit, onCheckoutClick: () -> Unit
+) {
+    val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
+    val discountAmount = if (itemsSubtotal > 0.0) {
+        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 300.0) itemsSubtotal else selectedVoucher.second
+    } else 0.0
+    val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
+    val taxAmount = discountedSubtotal * 0.05
+    val finalTotal = discountedSubtotal + taxAmount
+
+    Card(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.weight(1.8f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if (isDark) Color(0xFF0F0F10) else Color(0xFFE2E4E9)).clickable { onVoucherExpandedChange(true) }.padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = if (selectedVoucher.first == "None") "Select voucher" else "Voucher: ${selectedVoucher.first}", fontSize = 13.sp, color = if (selectedVoucher.first == "None") mutedTextColor else Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
+                        Icon(Icons.Default.ArrowDropDown, null, tint = mutedTextColor, modifier = Modifier.size(20.dp))
+                    }
+                    DropdownMenu(expanded = isVoucherExpanded, onDismissRequest = { onVoucherExpandedChange(false) }, modifier = Modifier.background(if (isDark) Color(0xFF1E1E20) else Color.White)) {
+                        vouchers.forEach { v ->
+                            DropdownMenuItem(text = {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(v.first, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textColor)
+                                    if (v.second > 0) Text("-Rs. ${v.second.toInt()}", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                            }, onClick = { onVoucherChange(v); onVoucherExpandedChange(false) })
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                if (selectedItems.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp), verticalAlignment = Alignment.CenterVertically) {
+                        selectedItems.take(3).forEach { item ->
+                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White).border(1.dp, Color.Gray.copy(alpha = 0.3f), CircleShape).padding(2.dp)) {
+                                AsyncImage(model = item.image, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Fit)
+                            }
+                        }
+                        if (selectedItems.size > 3) {
+                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9)).border(1.dp, textColor.copy(alpha = 0.8f), CircleShape), contentAlignment = Alignment.Center) {
+                                Text("+${selectedItems.size - 3}", fontSize = 9.sp, color = textColor, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(Triple("Cash", Icons.Default.Money, "Cash on Delivery"), Triple("Card", Icons.Default.CreditCard, "Credit / Debit Card"), Triple("E-sewa", Icons.Default.Smartphone, "E-sewa")).forEach { (label, icon, method) ->
+                    val isSel = selectedPaymentMethod == method
+                    Box(modifier = Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(12.dp)).background(if (isSel) Color(0xFF4CAF50) else (if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9))).clickable { onPaymentMethodChange(method) }, contentAlignment = Alignment.Center) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(icon, label, tint = if (isSel) Color.White else mutedTextColor, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(label, color = if (isSel) Color.White else mutedTextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            SummaryRow("Subtotal", formatDecimalPrice(itemsSubtotal), mutedTextColor, textColor)
+            SummaryRow("Tax (5%)", formatDecimalPrice(taxAmount), mutedTextColor, textColor)
+            if (discountAmount > 0.0) SummaryRow("Discount (${selectedVoucher.first})", "-${formatDecimalPrice(discountAmount)}", Color(0xFF4CAF50), Color(0xFF4CAF50))
+            HorizontalDivider(color = mutedTextColor.copy(alpha = 0.2f))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Total", color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(formatPrice(finalTotal), color = Color(0xFF4CAF50), fontSize = 20.sp, fontWeight = FontWeight.Black)
+            }
+            Button(onClick = onCheckoutClick, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("checkout_selected_button"), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFF0F0F10) else Color(0xFF0C1324), contentColor = Color.White), enabled = selectedItems.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Checkout Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SummaryRow(label: String, value: String, labelColor: Color, valueColor: Color) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = labelColor, fontSize = 14.sp)
+        Text(value, color = valueColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 

@@ -76,8 +76,8 @@ class MainActivity : ComponentActivity() {
                                     val isThemeSet = mainViewModel.isThemeSet(context)
                                     val isOnboardingDone = mainViewModel.onboardingCompleted.value
                                     
-                                    if (arePermissionsGranted && isThemeSet && isOnboardingDone) {
-                                        navController.navigate("login") {
+                                    if (!isOnboardingDone) {
+                                        navController.navigate("onboarding") {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     } else if (!arePermissionsGranted) {
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     } else {
-                                        navController.navigate("onboarding") {
+                                        navController.navigate("login") {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     }
@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
                             ThemeSelectionScreen(
                                 viewModel = mainViewModel,
                                 onNavigateNext = {
-                                    navController.navigate("onboarding") {
+                                    navController.navigate("login") {
                                         popUpTo("theme_selection") { inclusive = true }
                                     }
                                 }
@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(
                                 viewModel = mainViewModel,
                                 onNavigateNext = {
-                                    navController.navigate("login") {
+                                    navController.navigate("permission") {
                                         popUpTo("onboarding") { inclusive = true }
                                     }
                                 }

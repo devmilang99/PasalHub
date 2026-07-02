@@ -9,7 +9,8 @@ data class UserEntity(
     val name: String,
     val dateOfBirth: String,
     val address: String,
-    val isRemembered: Boolean = false
+    val isRemembered: Boolean = false,
+    val profileImage: String? = null
 )
 
 @Entity(tableName = "cart_items")

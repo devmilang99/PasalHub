@@ -1,6 +1,6 @@
 package com.example.ui.screens
 
-import android.widget.Toast
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -31,9 +30,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.BuildConfig
 import com.example.ui.viewmodel.MainViewModel
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun LoginScreen(
@@ -45,10 +52,9 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
-    var showGoogleOAuthDialog by remember { mutableStateOf(false) }
     var isLoggingIn by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
-    var alertMessage by remember { mutableStateOf<String?>(null) }
+    var authDialogState by remember { mutableStateOf<AuthDialogState?>(null) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -214,12 +220,13 @@ fun LoginScreen(
                 Button(
                     onClick = {
                         if (email.isBlank() || password.isBlank()) {
-                            alertMessage = "Please enter both email and password to proceed."
+                            authDialogState = AuthDialogState.Error("Please enter both email and password to proceed.")
                             return@Button
                         }
                         scope.launch {
                             isLoggingIn = true
-                            delay(1200)
+                            authDialogState = AuthDialogState.Loading("Login")
+                            delay(1200.milliseconds)
                             isLoggingIn = false
                             viewModel.registerUser(
                                 name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
@@ -228,6 +235,9 @@ fun LoginScreen(
                                 address = "123 Pasal Hub Blvd",
                                 rememberMe = rememberMe
                             )
+                            authDialogState = AuthDialogState.Success("Login")
+                            delay(800.milliseconds)
+                            authDialogState = null
                             onNavigateToDashboard()
                         }
                     },
@@ -284,7 +294,104 @@ fun LoginScreen(
 
                 // Social Login
                 OutlinedButton(
-                    onClick = { showGoogleOAuthDialog = true },
+                    onClick = { 
+                        Log.d("GoogleSignIn", "Sign-in button clicked")
+                        
+                        // Fallback to the Web Client ID from google-services.json if BuildConfig is empty
+                        val serverClientId = if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isNotEmpty()) {
+                            BuildConfig.GOOGLE_SERVER_CLIENT_ID
+                        } else {
+                            "1079515205022-ig535etmdi6l9sc98hrj1ojb610sgc7p.apps.googleusercontent.com"
+                        }
+                        
+                        Log.d("GoogleSignIn", "Using Server Client ID: $serverClientId")
+
+                        val credentialManager = CredentialManager.create(context)
+                        val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
+                            .setFilterByAuthorizedAccounts(false)
+                            .setServerClientId(serverClientId)
+                            .setAutoSelectEnabled(false)
+                            .build()
+
+                        val request: GetCredentialRequest = GetCredentialRequest.Builder()
+                            .addCredentialOption(googleIdOption)
+                            .build()
+
+                        scope.launch {
+                            // 1. INITIATE: Show processing dialog immediately on click
+                            authDialogState = AuthDialogState.Loading("Google Login")
+                            delay(400) // Brief delay so user sees the dialog start
+                            
+                            // 2. HIDE: Hide dialog before Google UI takes over
+                            authDialogState = null 
+                            
+                            try {
+                                val result = credentialManager.getCredential(
+                                    context = context,
+                                    request = request
+                                )
+                                
+                                // 3. VALIDATING: Show dialog again while validating with Firebase
+                                authDialogState = AuthDialogState.Loading("Secure Access")
+                                
+                                val credential = result.credential
+                                Log.d("GoogleSignIn", "Received credential type: ${credential.type}")
+
+                                val idToken = when (credential) {
+                                    is GoogleIdTokenCredential -> {
+                                        Log.d("GoogleSignIn", "Successfully identified GoogleIdTokenCredential")
+                                        credential.idToken
+                                    }
+                                    else -> {
+                                        // Manual parsing fallback
+                                        if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                            Log.d("GoogleSignIn", "Manually parsing GoogleIdTokenCredential")
+                                            GoogleIdTokenCredential.createFrom(credential.data).idToken
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                }
+
+                                if (idToken != null) {
+                                    val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+                                    FirebaseAuth.getInstance().signInWithCredential(firebaseCredential)
+                                        .addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                val user = task.result?.user
+                                                Log.d("GoogleSignIn", "Firebase Sign-In Success: ${user?.email}")
+                                                viewModel.registerUser(
+                                                    name = user?.displayName ?: "User",
+                                                    email = user?.email ?: "user@google.com",
+                                                    dateOfBirth = "2000-01-01",
+                                                    address = "KTM HQ",
+                                                    rememberMe = true,
+                                                    profileImage = user?.photoUrl?.toString()
+                                                )
+                                                // 4. LOGIN DIRECTLY: Skip Success dialog and navigate immediately
+                                                authDialogState = null
+                                                onNavigateToDashboard()
+                                            } else {
+                                                val errorMsg = task.exception?.localizedMessage ?: "Unknown Firebase error"
+                                                Log.e("GoogleSignIn", "Firebase Sign-In Failed: $errorMsg")
+                                                authDialogState = AuthDialogState.Error("Authentication failed: $errorMsg")
+                                            }
+                                        }
+                                } else {
+                                    Log.e("GoogleSignIn", "No ID Token found in credential")
+                                    authDialogState = AuthDialogState.Error("Could not retrieve Google account information.")
+                                }
+                            } catch (e: Exception) {
+                                Log.e("GoogleSignIn", "Credential Manager Error", e)
+                                // Only show error if the user didn't manually cancel the picker
+                                if (e !is androidx.credentials.exceptions.GetCredentialCancellationException) {
+                                    authDialogState = AuthDialogState.Error("Google Sign-In failed: ${e.localizedMessage}")
+                                } else {
+                                    authDialogState = null
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -326,31 +433,16 @@ fun LoginScreen(
                 }
             }
 
-            if (showGoogleOAuthDialog) {
-                AlertDialog(
-                    onDismissRequest = { showGoogleOAuthDialog = false },
-                    title = { Text("Google Sign In") },
-                    text = { Text("Connect your Google account for a seamless experience.") },
-                    confirmButton = {
-                        Button(onClick = {
-                            scope.launch {
-                                delay(1000)
-                                viewModel.registerUser("Google User", "user@google.com", "2000-01-01", "Google HQ", true)
-                                showGoogleOAuthDialog = false
-                                onNavigateToDashboard()
-                            }
-                        }) { Text("Authorize") }
-                    }
-                )
-            }
-
-            alertMessage?.let { message ->
-                PasalHubAlertDialog(
-                    onDismissRequest = { alertMessage = null },
-                    title = "Attention",
-                    text = message,
-                    icon = Icons.Default.Info,
-                    isDark = true // Login screen is dark
+            authDialogState?.let { state ->
+                PasalHubAuthDialog(
+                    onDismissRequest = { 
+                        if (state is AuthDialogState.Success) {
+                            onNavigateToDashboard()
+                        }
+                        authDialogState = null
+                    },
+                    state = state,
+                    isDark = true
                 )
             }
         }

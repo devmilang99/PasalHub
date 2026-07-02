@@ -75,6 +75,7 @@ fun ProfileScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showFavoritesSheet by remember { mutableStateOf(false) }
     var favoriteSearchQuery by remember { mutableStateOf("") }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val bgColor = if (isDark) Color(0xFF0F0F10) else Color(0xFFF8F9FA)
     val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
@@ -115,12 +116,21 @@ fun ProfileScreen(
                             .border(2.dp, accentColor.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Avatar",
-                            tint = textColor,
-                            modifier = Modifier.size(50.dp)
-                        )
+                        if (currentUser?.profileImage != null) {
+                            AsyncImage(
+                                model = currentUser?.profileImage,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Avatar",
+                                tint = textColor,
+                                modifier = Modifier.size(50.dp)
+                            )
+                        }
                     }
                     Surface(
                         modifier = Modifier.size(28.dp),
@@ -255,7 +265,7 @@ fun ProfileScreen(
                 .padding(bottom = 16.dp)
         ) {
             Button(
-                onClick = onLogout,
+                onClick = { showLogoutDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -538,6 +548,23 @@ fun ProfileScreen(
                     Text("I Understand")
                 }
             }
+        )
+    }
+
+    if (showLogoutDialog) {
+        PasalHubAlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = "Sign Out",
+            text = "Are you sure you want to sign out? You will need to log in again to access your favorites and profile details.",
+            confirmButtonText = "Sign Out",
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            },
+            dismissButtonText = "Cancel",
+            isDark = isDark,
+            icon = Icons.AutoMirrored.Filled.Logout,
+            iconColor = if (isDark) Color(0xFFF87171) else Color(0xFFD90429)
         )
     }
 }

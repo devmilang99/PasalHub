@@ -49,7 +49,7 @@ fun RegisterScreen(
     var address by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
-    var showSuccessDialog by remember { mutableStateOf(false) }
+    var authDialogState by remember { mutableStateOf<AuthDialogState?>(null) }
 
     // Error states
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -303,10 +303,11 @@ fun RegisterScreen(
                             dobError == null && addressError == null) {
                             scope.launch {
                                 isRegistering = true
-                                delay(1000)
+                                authDialogState = AuthDialogState.Loading("Registration")
+                                delay(1200)
                                 isRegistering = false
                                 viewModel.registerUser(name, email, dateOfBirth, address, true)
-                                showSuccessDialog = true
+                                authDialogState = AuthDialogState.Success("Account Creation")
                             }
                         }
                     },
@@ -360,16 +361,15 @@ fun RegisterScreen(
             }
         }
 
-        if (showSuccessDialog) {
-            PasalHubAlertDialog(
+        authDialogState?.let { state ->
+            PasalHubAuthDialog(
                 onDismissRequest = { 
-                    showSuccessDialog = false
-                    onNavigateToDashboard()
+                    if (state is AuthDialogState.Success) {
+                        onNavigateToDashboard()
+                    }
+                    authDialogState = null
                 },
-                title = "Welcome to Pasal Hub!",
-                text = "Your account has been created successfully. Start your premium shopping journey now.",
-                confirmButtonText = "Let's Shop",
-                icon = Icons.Default.Celebration,
+                state = state,
                 isDark = isDark
             )
         }

@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.R
@@ -54,6 +56,9 @@ fun ProductDetailScreen(
     val isFavorited = favoriteIds.contains(product.id)
     val currentUser by viewModel.currentUser.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()
+
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     
     LaunchedEffect(product) {
         viewModel.loadFavorites(context)
@@ -76,11 +81,8 @@ fun ProductDetailScreen(
             .background(MaterialTheme.colorScheme.background)
             .testTag("item_detail_screen")
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 80.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Adaptive Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -105,25 +107,17 @@ fun ProductDetailScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(
-                        onClick = {
-                            viewModel.notificationEvent.tryEmit("Shared exclusive link!")
-                        },
+                        onClick = { viewModel.notificationEvent.tryEmit("Shared exclusive link!") },
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share item",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurface)
                     }
 
                     IconButton(
-                        onClick = {
-                            viewModel.toggleFavorite(context, product.id)
-                        },
+                        onClick = { viewModel.toggleFavorite(context, product.id) },
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
@@ -131,324 +125,117 @@ fun ProductDetailScreen(
                     ) {
                         Icon(
                             imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Add to Wishlist",
+                            contentDescription = "Favorite",
                             tint = if (isFavorited) Color.Red else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(product.image)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = product.title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = product.category.uppercase(),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = product.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    lineHeight = 30.sp
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
+            if (isExpanded) {
+                // Tablet Layout: Two Columns
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
-                    Text(
-                        text = formatPrice(product.price),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Exclusively Curated By",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${product.category.replaceFirstChar { it.uppercase() }} Luxury Direct",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row {
-                        for (i in 1..5) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = if (i <= 4) Color(0xFFFFB200) else Color.LightGray,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = "4.8 (124 reviews)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    modifier = Modifier.padding(vertical = 20.dp)
-                )
-
-                Text(
-                    text = "Description",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = product.description,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 22.sp
-                )
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    modifier = Modifier.padding(vertical = 20.dp)
-                )
-
-                Text(
-                    text = "Customer Reviews (${reviews.size})",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    reviews.forEach { r ->
+                    // Left Column: Image
+                    Column(modifier = Modifier.weight(1f)) {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = r.reviewer,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                    Text(
-                                        text = r.date,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row {
-                                    for (i in 1..5) {
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = null,
-                                            tint = if (i <= r.rating) Color(0xFFFFB200) else Color.LightGray,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = r.comment,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 18.sp
-                                )
+                            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                                AsyncImage(model = product.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                             }
                         }
                     }
-                }
 
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    modifier = Modifier.padding(vertical = 20.dp)
-                )
-
-                if (similarProducts.isNotEmpty()) {
-                    Text(
-                        text = "Similar Premium Products",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Right Column: Details
+                    Column(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .verticalScroll(rememberScrollState())
                     ) {
-                        items(similarProducts) { simProduct ->
-                            Card(
-                                modifier = Modifier
-                                    .width(140.dp)
-                                    .clickable { onProductClick(simProduct) },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(90.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(if (isDark) Color(0xFF3D3D42) else Color.White)
-                                            .padding(6.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(simProduct.image)
-                                                .crossfade(true)
-                                                .build(),
-                                            contentDescription = simProduct.title,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Fit
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = simProduct.title,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = formatPrice(simProduct.price),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
+                        ProductInfoSection(product, isDark)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        ReviewSection(reviews)
+                        if (similarProducts.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            SimilarProductsSection(similarProducts, isDark, onProductClick)
                         }
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                // Mobile Layout: Single Column
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().height(300.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                            AsyncImage(model = product.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    ProductInfoSection(product, isDark)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = Color.Gray.copy(alpha = 0.1f))
+                    ReviewSection(reviews)
+                    if (similarProducts.isNotEmpty()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = Color.Gray.copy(alpha = 0.1f))
+                        SimilarProductsSection(similarProducts, isDark, onProductClick)
+                    }
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
             }
         }
 
-        Card(
+        // Adaptive Bottom Bar
+        Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+                .then(if (isExpanded) Modifier.width(450.dp).padding(bottom = 24.dp) else Modifier.fillMaxWidth()),
+            shape = if (isExpanded) RoundedCornerShape(28.dp) else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shadowElevation = 16.dp,
+            border = if (isExpanded) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = {
-                        viewModel.addToCart(product)
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                        .testTag("detail_add_to_cart_button"),
+                    onClick = { viewModel.addToCart(product) },
+                    modifier = Modifier.weight(1f).height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocalMall,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(Icons.Default.LocalMall, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add to Bag", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text("Add to Bag", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
 
                 Button(
                     onClick = { showBuyNowSheet = true },
-                    modifier = Modifier
-                        .weight(1.2f)
-                        .height(52.dp)
-                        .testTag("detail_buy_now_button"),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    modifier = Modifier.weight(1.2f).height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Buy Now", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Buy Now", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
@@ -489,32 +276,130 @@ fun ProductDetailScreen(
                 { buyNowPaymentMethod = it },
                 buyNowVoucher,
                 { buyNowVoucher = it },
-                listOf(
-                    Pair("None", 0.0),
-                    Pair("PASALPREMIUM", 150.0),
-                    Pair("PASALSAVINGS", 300.0)
-                ),
+                listOf(Pair("None", 0.0), Pair("PASALPREMIUM", 150.0), Pair("PASALSAVINGS", 300.0)),
                 { showBuyNowReceipt = false },
                 {
-                    val subtotal = product.price
-                    val discount = buyNowVoucher.second
-                    val discounted = (subtotal - discount).coerceAtLeast(0.0)
-                    val tax = discounted * 0.05
-                    val finalTotal = discounted + tax
-
-                    viewModel.placeDirectOrder(
-                        context = context,
-                        product = product,
-                        finalTotal = finalTotal,
-                        paymentMethod = buyNowPaymentMethod,
-                        appliedVoucher = buyNowVoucher.first
-                    )
+                    val discounted = (product.price - buyNowVoucher.second).coerceAtLeast(0.0)
+                    viewModel.placeDirectOrder(context, product, discounted * 1.05, buyNowPaymentMethod, buyNowVoucher.first)
                     showBuyNowReceipt = false
                     onOrderPlaced()
                 },
                 currentUserAddress = addressText,
                 isDark = isDark
             )
+        }
+    }
+}
+
+@Composable
+fun ProductInfoSection(product: ProductDto, isDark: Boolean) {
+    Column {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = product.category.uppercase(),
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = product.title,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onBackground,
+            lineHeight = 32.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = formatPrice(product.price),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB200), modifier = Modifier.size(20.dp))
+                Text("4.8 (124 reviews)", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = Color.Gray.copy(alpha = 0.1f))
+
+        Text(text = "Description", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(text = product.description, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
+    }
+}
+
+@Composable
+fun ReviewSection(reviews: List<ProductReview>) {
+    Column {
+        Text(text = "Customer Reviews (${reviews.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            reviews.forEach { r ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = r.reviewer, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(text = r.date, fontSize = 11.sp, color = Color.Gray)
+                        }
+                        Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                            repeat(5) { i ->
+                                Icon(Icons.Default.Star, null, tint = if (i < r.rating) Color(0xFFFFB200) else Color.LightGray, modifier = Modifier.size(14.dp))
+                            }
+                        }
+                        Text(text = r.comment, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SimilarProductsSection(similarProducts: List<ProductDto>, isDark: Boolean, onProductClick: (ProductDto) -> Unit) {
+    Column {
+        Text(text = "Similar Premium Products", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            items(similarProducts) { simProduct ->
+                Card(
+                    modifier = Modifier.width(160.dp).clickable { onProductClick(simProduct) },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(16.dp)).background(if (isDark) Color(0xFF3D3D42) else Color.White).padding(10.dp), contentAlignment = Alignment.Center) {
+                            AsyncImage(model = simProduct.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(text = simProduct.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(text = formatPrice(simProduct.price), fontSize = 14.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
         }
     }
 }
@@ -665,5 +550,3 @@ fun getMockReviewsForCategory(category: String): List<ProductReview> {
         )
     }
 }
-
-

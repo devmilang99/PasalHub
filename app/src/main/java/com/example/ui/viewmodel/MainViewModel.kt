@@ -119,14 +119,15 @@ class MainViewModel(
             initialValue = null
         )
 
-    fun registerUser(name: String, email: String, dateOfBirth: String, address: String, rememberMe: Boolean) {
+    fun registerUser(name: String, email: String, dateOfBirth: String, address: String, rememberMe: Boolean, profileImage: String? = null) {
         viewModelScope.launch {
             val user = UserEntity(
                 email = email,
                 name = name,
                 dateOfBirth = dateOfBirth,
                 address = address,
-                isRemembered = rememberMe
+                isRemembered = rememberMe,
+                profileImage = profileImage
             )
             repository.saveUser(user)
         }
