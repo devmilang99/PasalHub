@@ -2,7 +2,11 @@ package com.example.di
 
 import android.content.Context
 import androidx.room.Room
+import com.example.ai.data.GeminiSearchRouter
 import com.example.data.local.AppDatabase
+import com.example.data.network.AuthInterceptor
+import com.example.data.network.TokenAuthenticator
+import com.example.data.network.TokenManager
 import com.example.data.remote.FakeStoreApi
 import com.example.data.repository.ShopRepository
 import com.squareup.moshi.Moshi
@@ -15,9 +19,15 @@ import java.util.concurrent.TimeUnit
 
 interface AppContainer {
     val shopRepository: ShopRepository
+    val geminiSearchRouter: GeminiSearchRouter
+    val tokenManager: TokenManager
 }
 
 class AppContainerImpl(private val context: Context) : AppContainer {
+
+    override val tokenManager: TokenManager by lazy {
+        TokenManager(context)
+    }
 
     private val moshi: Moshi by lazy {
         Moshi.Builder()
@@ -31,6 +41,8 @@ class AppContainerImpl(private val context: Context) : AppContainer {
         }
         OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .addInterceptor(AuthInterceptor(tokenManager))
+            .authenticator(TokenAuthenticator(tokenManager))
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
@@ -63,5 +75,9 @@ class AppContainerImpl(private val context: Context) : AppContainer {
             cartDao = db.cartDao(),
             orderDao = db.orderDao()
         )
+    }
+
+    override val geminiSearchRouter: GeminiSearchRouter by lazy {
+        GeminiSearchRouter(moshi)
     }
 }

@@ -22,13 +22,17 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
 import com.example.data.remote.ProductDto
+import com.example.ai.presentation.AiSearchViewModel
 import com.example.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: MainViewModel,
-    onLogout: () -> Unit
+    aiViewModel: AiSearchViewModel,
+    onLogout: () -> Unit,
+    onAiSearchClick: () -> Unit = {},
+    onProductClick: (ProductDto) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Home, 1: Cart, 2: Order, 3: Profile
     val cartItems by viewModel.cartItems.collectAsState()
@@ -36,7 +40,6 @@ fun DashboardScreen(
     val isDark by viewModel.isDarkTheme.collectAsState()
     val orders by viewModel.ordersState.collectAsState()
     val recentOrdersCount = orders.count { it.status in listOf("Placing", "Placed", "Packaging", "Sent for Delivery") }
-    var selectedProductForDetail by remember { mutableStateOf<ProductDto?>(null) }
     var notificationMessage by remember { mutableStateOf<String?>(null) }
     var showNotificationDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -88,16 +91,12 @@ fun DashboardScreen(
         }
     }
 
-    BackHandler(enabled = selectedProductForDetail != null || selectedTab != 0) {
-        if (selectedProductForDetail != null) {
-            selectedProductForDetail = null
-        } else {
-            selectedTab = 0
-        }
+    BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
     }
 
     Row(modifier = Modifier.fillMaxSize()) {
-        if (useNavRail && selectedProductForDetail == null) {
+        if (useNavRail) {
             NavigationRail(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -216,7 +215,6 @@ fun DashboardScreen(
             },
             bottomBar = {
                 val showBottomNav = !useNavRail && when {
-                    selectedProductForDetail != null -> false
                     selectedTab == 1 -> cartItems.size <= 3
                     else -> true
                 }
@@ -314,23 +312,15 @@ fun DashboardScreen(
                     .padding(innerPadding)
             ) {
                 when (selectedTab) {
-                    0 -> HomeScreen(viewModel, onProductClick = { selectedProductForDetail = it })
+                    0 -> HomeScreen(
+                        viewModel, 
+                        aiViewModel = aiViewModel,
+                        onProductClick = onProductClick,
+                        onAiSearchClick = onAiSearchClick
+                    )
                     1 -> CartScreen(viewModel, onBack = { selectedTab = 0 }, onOrderPlaced = { selectedTab = 2 })
                     2 -> OrdersScreen(viewModel)
-                    3 -> ProfileScreen(viewModel, onLogout, onProductClick = { selectedProductForDetail = it })
-                }
-
-                selectedProductForDetail?.let { product ->
-                    ProductDetailScreen(
-                        product = product,
-                        viewModel = viewModel,
-                        onBack = { selectedProductForDetail = null },
-                        onProductClick = { selectedProductForDetail = it },
-                        onOrderPlaced = {
-                            selectedProductForDetail = null
-                            selectedTab = 2
-                        }
-                    )
+                    3 -> ProfileScreen(viewModel, onLogout, onProductClick = onProductClick)
                 }
             }
         }

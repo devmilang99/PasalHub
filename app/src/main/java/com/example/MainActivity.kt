@@ -16,20 +16,34 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.ai.data.GeminiSearchRouter
+import com.example.ai.presentation.AiSearchViewModel
+import com.example.ai.presentation.AISearchScreen
+import com.example.data.remote.ProductDto
+import com.example.data.repository.Resource
 import com.example.data.repository.ShopRepository
 import com.example.ui.screens.*
-import com.example.ui.theme.PasalHubTheme
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.LightBackground
+import com.example.ui.theme.PasalHubTheme
 import com.example.ui.viewmodel.MainViewModel
 
-class ViewModelFactory(private val repository: ShopRepository) : ViewModelProvider.Factory {
+class ViewModelFactory(
+    private val repository: ShopRepository,
+    private val geminiRouter: GeminiSearchRouter
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository) as T
+        return when {
+            modelClass.isAssignableFrom(MainViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                MainViewModel(repository, geminiRouter) as T
+            }
+            modelClass.isAssignableFrom(AiSearchViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                AiSearchViewModel(repository, geminiRouter) as T
+            }
+            else -> throw IllegalArgumentException("Unknown ViewModel class")
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 
@@ -40,8 +54,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val appContainer = (application as PasalHubApp).container
-        val factory = ViewModelFactory(appContainer.shopRepository)
+        val factory = ViewModelFactory(appContainer.shopRepository, appContainer.geminiSearchRouter)
         val mainViewModel: MainViewModel by viewModels { factory }
+        val aiSearchViewModel: AiSearchViewModel by viewModels { factory }
 
         setContent {
             val isDarkTheme by mainViewModel.isDarkTheme.collectAsState()
@@ -175,17 +190,64 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        // 8.1 AI Search Screen
+                        composable("ai_search") {
+                            AISearchScreen(
+                                viewModel = mainViewModel,
+                                aiViewModel = aiSearchViewModel,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onProductClick = { product ->
+                                    navController.navigate("product_detail/${product.id}")
+                                }
+                            )
+                        }
+
                         // 8. Main Dashboard Screen
                         composable("dashboard") {
                             DashboardScreen(
                                 viewModel = mainViewModel,
+                                aiViewModel = aiSearchViewModel,
                                 onLogout = {
                                     mainViewModel.logout()
                                     navController.navigate("login") {
                                         popUpTo("dashboard") { inclusive = true }
                                     }
+                                },
+                                onAiSearchClick = {
+                                    navController.navigate("ai_search")
+                                },
+                                onProductClick = { product ->
+                                    navController.navigate("product_detail/${product.id}")
                                 }
                             )
+                        }
+
+                        // 9. Product Detail Screen
+                        composable("product_detail/{productId}") { backStackEntry ->
+                            val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
+                            val productsState by mainViewModel.homeProductsState.collectAsState()
+                            val product = when (productsState) {
+                                is Resource.Success -> (productsState as Resource.Success).data.find { it.id == productId }
+                                else -> null
+                            }
+                            
+                            if (product != null) {
+                                ProductDetailScreen(
+                                    product = product,
+                                    viewModel = mainViewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onProductClick = { newProduct ->
+                                        navController.navigate("product_detail/${newProduct.id}")
+                                    },
+                                    onOrderPlaced = {
+                                        navController.navigate("dashboard") {
+                                            popUpTo("dashboard") { inclusive = false }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

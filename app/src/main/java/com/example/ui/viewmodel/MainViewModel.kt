@@ -2,6 +2,7 @@ package com.example.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ai.data.GeminiSearchRouter
 import com.example.data.local.CartItem
 import com.example.data.local.OrderEntity
 import com.example.data.local.UserEntity
@@ -10,9 +11,11 @@ import com.example.data.repository.Resource
 import com.example.data.repository.ShopRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 class MainViewModel(
-    private val repository: ShopRepository
+    private val repository: ShopRepository,
+    private val geminiRouter: GeminiSearchRouter
 ) : ViewModel() {
 
     val notificationEvent = MutableSharedFlow<String>()
@@ -25,13 +28,13 @@ class MainViewModel(
         val newValue = !_isDarkTheme.value
         _isDarkTheme.value = newValue
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("dark_theme", newValue).apply()
+        prefs.edit { putBoolean("dark_theme", newValue) }
     }
 
     fun setTheme(context: android.content.Context, dark: Boolean) {
         _isDarkTheme.value = dark
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("dark_theme", dark).putBoolean("theme_set", true).apply()
+        prefs.edit { putBoolean("dark_theme", dark).putBoolean("theme_set", true)}
     }
 
     fun isThemeSet(context: android.content.Context): Boolean {
@@ -72,25 +75,25 @@ class MainViewModel(
     fun setLocationPermission(context: android.content.Context, granted: Boolean) {
         _locationPermissionGranted.value = granted
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("perm_location", granted).apply()
+        prefs.edit { putBoolean("perm_location", granted) }
     }
 
     fun setCameraPermission(context: android.content.Context, granted: Boolean) {
         _cameraPermissionGranted.value = granted
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("perm_camera", granted).apply()
+        prefs.edit { putBoolean("perm_camera", granted) }
     }
 
     fun setStoragePermission(context: android.content.Context, granted: Boolean) {
         _storagePermissionGranted.value = granted
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("perm_storage", granted).apply()
+        prefs.edit { putBoolean("perm_storage", granted) }
     }
 
     fun setNotificationPermission(context: android.content.Context, granted: Boolean) {
         _notificationPermissionGranted.value = granted
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("perm_notification", granted).apply()
+        prefs.edit { putBoolean("perm_notification", granted) }
     }
 
     // Biometric State
@@ -108,7 +111,7 @@ class MainViewModel(
     fun completeOnboarding(context: android.content.Context) {
         _onboardingCompleted.value = true
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("onboarding_done", true).apply()
+        prefs.edit { putBoolean("onboarding_done", true) }
     }
 
     // User State from DB
@@ -150,7 +153,10 @@ class MainViewModel(
 
     private val _refreshTrigger = MutableStateFlow(0L)
 
-    val productsState: StateFlow<Resource<List<ProductDto>>> = combine(
+    // AI Search State (Moved to AiSearchViewModel)
+
+    // Home Products State (Traditional filtering)
+    val homeProductsState: StateFlow<Resource<List<ProductDto>>> = combine(
         _selectedCategory,
         _searchQuery,
         _refreshTrigger
@@ -162,6 +168,7 @@ class MainViewModel(
         } else {
             repository.getProductsByCategory(category)
         }
+        
         flow.map { resource ->
             when (resource) {
                 is Resource.Loading -> Resource.Loading
@@ -181,6 +188,8 @@ class MainViewModel(
         initialValue = Resource.Loading
     )
 
+    // AI Products State (Moved to AiSearchViewModel)
+
     fun refreshProducts() {
         _refreshTrigger.value = System.currentTimeMillis()
     }
@@ -192,6 +201,8 @@ class MainViewModel(
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
+
+    // performAiSearch (Moved to AiSearchViewModel)
 
     // Cart State from DB
     val cartItems: StateFlow<List<CartItem>> = repository.getCartItems()

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +44,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
-    val productResource by viewModel.productsState.collectAsState()
+    val productResource by viewModel.homeProductsState.collectAsState()
     val storedPassword by viewModel.userPassword.collectAsState()
     val memberPoints by viewModel.memberPoints.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()

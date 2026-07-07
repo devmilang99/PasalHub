@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.R
+import com.example.ai.presentation.components.AiListeningAnimation
+import com.example.ai.presentation.AiSearchViewModel
 import kotlinx.coroutines.delay
 import com.example.data.remote.ProductDto
 import com.example.data.repository.Resource
@@ -52,13 +54,16 @@ data class PromoItem(
 @OptIn(ExperimentalMaterial3Api::class)
 fun HomeScreen(
     viewModel: MainViewModel,
-    onProductClick: (ProductDto) -> Unit
+    aiViewModel: AiSearchViewModel,
+    onProductClick: (ProductDto) -> Unit,
+    onAiSearchClick: () -> Unit = {}
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
-    val productsState by viewModel.productsState.collectAsState()
+    val productsState by viewModel.homeProductsState.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+    val isAiProcessing by aiViewModel.isAiProcessing.collectAsState()
     val context = LocalContext.current
 
     var isRefreshing by remember { mutableStateOf(false) }
@@ -396,6 +401,13 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        if (isAiProcessing) {
+            AiListeningAnimation(
+                modifier = Modifier.padding(16.dp),
+                text = "PasalHub AI is analyzing your request..."
+            )
+        }
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -407,28 +419,43 @@ fun HomeScreen(
                 value = localSearchQuery,
                 onValueChange = { localSearchQuery = it },
                 placeholder = { Text("Search curated shop items...", fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
+                leadingIcon = {
+                    IconButton(onClick = onAiSearchClick) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "AI Search",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 trailingIcon = {
-                    IconButton(
-                        onClick = { showFilterSheet = true },
-                        modifier = Modifier.testTag("search_filter_button")
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (isFilterActive) {
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(10.dp)
-                                    )
-                                }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (localSearchQuery.isNotEmpty()) {
+                            IconButton(onClick = { localSearchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
                             }
+                        }
+                        IconButton(
+                            onClick = { showFilterSheet = true },
+                            modifier = Modifier.testTag("search_filter_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = "Filter Icon",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            BadgedBox(
+                                badge = {
+                                    if (isFilterActive) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filter Icon",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 },
@@ -438,6 +465,12 @@ fun HomeScreen(
                     .testTag("dashboard_search_bar"),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = { aiViewModel.performAiSearch(localSearchQuery) }
+                ),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface
