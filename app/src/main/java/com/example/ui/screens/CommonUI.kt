@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.local.CartItem
+import com.example.core.database.data.CartItem
 import java.util.*
 
 fun formatPrice(price: Double): String {
@@ -402,6 +402,12 @@ sealed class AuthDialogState(
         icon = Icons.Default.CheckCircle,
         color = Color(0xFF10B981)
     )
+    class Greeting(name: String) : AuthDialogState(
+        title = "Welcome Back",
+        message = "Hello $name, we are making your application ready. Please wait...",
+        icon = Icons.Default.AutoAwesome,
+        color = Color(0xFF10B981)
+    )
     class Error(message: String) : AuthDialogState(
         title = "Authentication Failed",
         message = message,
@@ -634,8 +640,7 @@ fun OrderSummaryScreen(
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 24.dp)
-                            .padding(top = 20.dp, bottom = 24.dp)
-                            .navigationBarsPadding(),
+                            .padding(top = 20.dp, bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // 1. Logistics & Payment Summary (Moved here)
@@ -695,7 +700,7 @@ fun OrderSummaryScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = textColor, contentColor = bgColor)
                             ) {
-                                Text("PLACE ORDER NOW", fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
+                                Text("PLACE ORDER ", fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
                             }
                         }
                     }

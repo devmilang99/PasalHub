@@ -29,7 +29,7 @@ fun LoginTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = Color.White.copy(alpha = 0.6f)) },
+        label = { Text(label, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall) },
         leadingIcon = {
             Icon(
                 imageVector = leadingIcon,
@@ -41,7 +41,7 @@ fun LoginTextField(
         modifier = modifier
             .fillMaxWidth()
             .testTag(testTag),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = Color.White.copy(alpha = 0.3f),

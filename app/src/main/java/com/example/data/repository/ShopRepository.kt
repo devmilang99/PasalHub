@@ -1,11 +1,11 @@
 package com.example.data.repository
 
-import com.example.data.local.CartDao
-import com.example.data.local.CartItem
-import com.example.data.local.OrderDao
-import com.example.data.local.OrderEntity
-import com.example.data.local.UserDao
-import com.example.data.local.UserEntity
+import com.example.core.database.data.CartDao
+import com.example.core.database.data.CartItem
+import com.example.core.database.data.OrderDao
+import com.example.core.database.data.OrderEntity
+import com.example.core.database.data.UserDao
+import com.example.core.database.data.UserEntity
 import com.example.data.remote.FakeStoreApi
 import com.example.data.remote.ProductDto
 import kotlinx.coroutines.flow.Flow

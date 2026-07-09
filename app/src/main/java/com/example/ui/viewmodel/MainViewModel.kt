@@ -3,9 +3,10 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai.data.GeminiSearchRouter
-import com.example.data.local.CartItem
-import com.example.data.local.OrderEntity
-import com.example.data.local.UserEntity
+import com.example.core.application.domain.AppPreferencesRepository
+import com.example.core.database.data.CartItem
+import com.example.core.database.data.OrderEntity
+import com.example.core.database.data.UserEntity
 import com.example.data.remote.ProductDto
 import com.example.data.repository.Resource
 import com.example.data.repository.ShopRepository
@@ -15,13 +16,15 @@ import androidx.core.content.edit
 
 class MainViewModel(
     private val repository: ShopRepository,
+    private val appPrefs: AppPreferencesRepository,
     private val geminiRouter: GeminiSearchRouter
 ) : ViewModel() {
 
-    val notificationEvent = MutableSharedFlow<String>()
-
     // Theme state (false = Light, true = Dark)
-    private val _isDarkTheme = MutableStateFlow(true) // Default to dark for luxury look
+    // Note: Theme state is now primarily handled in InitialViewModel for the initial flow,
+    // but kept here for backward compatibility with screens still using MainViewModel.
+    // Ideally, this should be moved to a Shared UI State or Settings ViewModel.
+    private val _isDarkTheme = MutableStateFlow(true)
     val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
 
     fun toggleTheme(context: android.content.Context) {
@@ -37,63 +40,13 @@ class MainViewModel(
         prefs.edit { putBoolean("dark_theme", dark).putBoolean("theme_set", true)}
     }
 
-    fun isThemeSet(context: android.content.Context): Boolean {
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        return prefs.getBoolean("theme_set", false)
-    }
-
-    // Permission States
-    private val _locationPermissionGranted = MutableStateFlow(false)
-    val locationPermissionGranted: StateFlow<Boolean> = _locationPermissionGranted.asStateFlow()
-
-    private val _cameraPermissionGranted = MutableStateFlow(false)
-    val cameraPermissionGranted: StateFlow<Boolean> = _cameraPermissionGranted.asStateFlow()
-
-    private val _storagePermissionGranted = MutableStateFlow(false)
-    val storagePermissionGranted: StateFlow<Boolean> = _storagePermissionGranted.asStateFlow()
-
-    private val _notificationPermissionGranted = MutableStateFlow(false)
-    val notificationPermissionGranted: StateFlow<Boolean> = _notificationPermissionGranted.asStateFlow()
+    private val _lastEmail = MutableStateFlow("")
+    val lastEmail: StateFlow<String> = _lastEmail.asStateFlow()
 
     fun loadSettings(context: android.content.Context) {
         val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
         _isDarkTheme.value = prefs.getBoolean("dark_theme", true)
-        _onboardingCompleted.value = prefs.getBoolean("onboarding_done", false)
-        _locationPermissionGranted.value = prefs.getBoolean("perm_location", false)
-        _cameraPermissionGranted.value = prefs.getBoolean("perm_camera", false)
-        _storagePermissionGranted.value = prefs.getBoolean("perm_storage", false)
-        _notificationPermissionGranted.value = prefs.getBoolean("perm_notification", false)
-    }
-
-    val allPermissionsGranted: Flow<Boolean> = combine(
-        _locationPermissionGranted,
-        _cameraPermissionGranted,
-        _storagePermissionGranted,
-        _notificationPermissionGranted
-    ) { loc, cam, store, notif -> loc && cam && store && notif }
-
-    fun setLocationPermission(context: android.content.Context, granted: Boolean) {
-        _locationPermissionGranted.value = granted
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit { putBoolean("perm_location", granted) }
-    }
-
-    fun setCameraPermission(context: android.content.Context, granted: Boolean) {
-        _cameraPermissionGranted.value = granted
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit { putBoolean("perm_camera", granted) }
-    }
-
-    fun setStoragePermission(context: android.content.Context, granted: Boolean) {
-        _storagePermissionGranted.value = granted
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit { putBoolean("perm_storage", granted) }
-    }
-
-    fun setNotificationPermission(context: android.content.Context, granted: Boolean) {
-        _notificationPermissionGranted.value = granted
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit { putBoolean("perm_notification", granted) }
+        _lastEmail.value = prefs.getString("last_email", "") ?: ""
     }
 
     // Biometric State
@@ -104,16 +57,6 @@ class MainViewModel(
         _biometricAuthenticated.value = authenticated
     }
 
-    // Onboarding State
-    private val _onboardingCompleted = MutableStateFlow(false)
-    val onboardingCompleted: StateFlow<Boolean> = _onboardingCompleted.asStateFlow()
-
-    fun completeOnboarding(context: android.content.Context) {
-        _onboardingCompleted.value = true
-        val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
-        prefs.edit { putBoolean("onboarding_done", true) }
-    }
-
     // User State from DB
     val currentUser: StateFlow<UserEntity?> = repository.getUser()
         .stateIn(
@@ -122,7 +65,7 @@ class MainViewModel(
             initialValue = null
         )
 
-    fun registerUser(name: String, email: String, dateOfBirth: String, address: String, rememberMe: Boolean, profileImage: String? = null) {
+    fun registerUser(context: android.content.Context, name: String, email: String, dateOfBirth: String, address: String, rememberMe: Boolean, isGoogleUser: Boolean = false, profileImage: String? = null) {
         viewModelScope.launch {
             val user = UserEntity(
                 email = email,
@@ -130,18 +73,58 @@ class MainViewModel(
                 dateOfBirth = dateOfBirth,
                 address = address,
                 isRemembered = rememberMe,
+                isGoogleUser = isGoogleUser,
                 profileImage = profileImage
             )
             repository.saveUser(user)
+            
+            // Save last email for autofill
+            _lastEmail.value = email
+            val prefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
+            prefs.edit { putString("last_email", email) }
         }
     }
 
-    fun logout() {
+    fun logout(context: android.content.Context) {
         viewModelScope.launch {
+            val email = currentUser.value?.email ?: "guest"
             repository.clearUser()
             repository.clearCart()
             _biometricAuthenticated.value = false
+            
+            // Clear preferences related to this user and app settings
+            val settingsPrefs = context.getSharedPreferences("pasalhub_settings", android.content.Context.MODE_PRIVATE)
+            settingsPrefs.edit { 
+                remove("last_email")
+            }
+            _lastEmail.value = ""
+
+            val pointsPrefs = context.getSharedPreferences("pasalhub_points", android.content.Context.MODE_PRIVATE)
+            pointsPrefs.edit {
+                remove("pts_$email")
+            }
+            _memberPoints.value = 250
+
+            val favPrefs = context.getSharedPreferences("pasalhub_favorites", android.content.Context.MODE_PRIVATE)
+            favPrefs.edit {
+                remove("fav_set")
+            }
+            _favoriteIds.value = emptySet()
+            
+            // Note: We keep onboarding_done and theme_set true as they are app-wide setup,
+            // but if "all details" meant a factory reset, we'd clear those too.
+            // Given "dont ask again" for flow, we keep those flags.
         }
+    }
+
+    fun isValidatedUser(email: String, pass: String): Boolean {
+        // Simulation: Only specific users allowed
+        val validUsers = mapOf(
+            "admin@pasalhub.com" to "admin123",
+            "premium@pasalhub.com" to "luxury",
+            "test@example.com" to "password"
+        )
+        return validUsers[email] == pass
     }
 
     // Products State
@@ -238,7 +221,7 @@ class MainViewModel(
                     )
                 )
             }
-            notificationEvent.emit("Successfully added ${product.title} to your cart!")
+            appPrefs.emitNotification("Successfully added ${product.title} to your cart!")
         }
     }
 
@@ -343,7 +326,7 @@ class MainViewModel(
                     date = System.currentTimeMillis()
                 )
                 repository.placeOrder(order)
-                notificationEvent.emit("Your order #ORD-${1000 + order.orderId} has been placed successfully!")
+                appPrefs.emitNotification("Your order #ORD-${1000 + order.orderId} has been placed successfully!")
             }
         }
     }

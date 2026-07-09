@@ -9,6 +9,8 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+val dbVersion = 2
+
 android {
   namespace = "com.example"
   compileSdk = 37
@@ -17,9 +19,11 @@ android {
     applicationId = "com.aistudio.ecommerceshop.pqwzxl"
     minSdk = 24
     targetSdk = 37
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = dbVersion
+    versionName = "1.0.$dbVersion"
 
+    buildConfigField("int", "DATABASE_VERSION", dbVersion.toString())
+    
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
@@ -128,4 +132,8 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+ksp {
+  arg("room.schemaLocation", "$projectDir/schemas")
 }

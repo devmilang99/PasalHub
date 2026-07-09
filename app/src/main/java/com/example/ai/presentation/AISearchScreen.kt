@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +39,7 @@ import com.example.ui.screens.formatPrice
 import com.example.data.remote.ProductDto
 import com.example.data.repository.Resource
 import com.example.ui.viewmodel.MainViewModel
+import com.example.ui.theme.LocalDimens
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -48,6 +50,7 @@ fun AISearchScreen(
     onProductClick: (ProductDto) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val dimens = LocalDimens.current
     val isAiProcessing by aiViewModel.isAiProcessing.collectAsState()
     val aiSearchError by aiViewModel.aiSearchError.collectAsState()
     val productsState by aiViewModel.aiProductsState.collectAsState()
@@ -143,7 +146,7 @@ fun AISearchScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = dimens.padding)
                     .imePadding()
             ) {
                 Box(
@@ -369,8 +372,8 @@ fun SearchInputBar(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp, top = 12.dp),
-        shape = RoundedCornerShape(32.dp),
+            .padding(bottom = LocalDimens.current.small, top = LocalDimens.current.small),
+        shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
@@ -380,7 +383,7 @@ fun SearchInputBar(
         ) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -460,8 +463,8 @@ fun ResultsOrHistory(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
+        verticalArrangement = Arrangement.spacedBy(LocalDimens.current.small),
+        contentPadding = PaddingValues(top = 4.dp, bottom = LocalDimens.current.medium)
     ) {
         when {
             productsState is Resource.Success && productsState.data.isNotEmpty() -> {
@@ -474,10 +477,10 @@ fun ResultsOrHistory(
 
                 item {
                     Text(
-                        "Top recommendations for you",
+                        "Top recommendations",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
                     )
                 }
 
@@ -508,52 +511,51 @@ fun ResultsOrHistory(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 40.dp),
+                            .padding(vertical = LocalDimens.current.large),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                             shape = CircleShape,
-                            modifier = Modifier.size(60.dp)
+                            modifier = Modifier.size(LocalDimens.current.logoSize)
                         ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(LocalDimens.current.small),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
-                            text = "Welcome, $username!",
-                            style = MaterialTheme.typography.headlineMedium,
+                            text = "Hi, $username!",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         
                         Text(
                             text = "What can I help you find today?",
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
 
                 item {
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
                         Text(
                             "Discover more",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-0.5).sp
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
                         )
                         Text(
                             "Try searching for something specific",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -576,44 +578,44 @@ fun ResultsOrHistory(
 @Composable
 fun QuickActionCards(onActionClick: (String) -> Unit) {
     val actions = listOf(
-        "Latest tech" to Icons.Rounded.Devices,
-        "Summer fashion" to Icons.Rounded.Checkroom,
-        "Best gaming gear" to Icons.Rounded.SportsEsports,
-        "Home decor" to Icons.Rounded.Home
+        Triple("Latest tech", Icons.Rounded.Devices, "Latest electronics"),
+        Triple("Summer fashion", Icons.Rounded.Checkroom, "Organic clothing"),
+        Triple("Gaming gear", Icons.Rounded.SportsEsports, "Best gaming gear"),
+        Triple("Home decor", Icons.Rounded.Home, "Modern appliances")
     )
 
     val actionQueries = mapOf(
         "Latest tech" to "latest PasalHub electronics",
         "Summer fashion" to "Organic cotton clothing",
-        "Best gaming gear" to "PasalHub gaming gear",
+        "Gaming gear" to "PasalHub gaming gear",
         "Home decor" to "HomeMaster modern appliances"
     )
 
-    Column(modifier = Modifier.padding(top = 24.dp)) {
+    Column(modifier = Modifier.padding(top = LocalDimens.current.medium)) {
         Text(
             "Quick Explore",
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(LocalDimens.current.small))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.small),
             modifier = Modifier.fillMaxWidth()
         ) {
-            actions.take(2).forEach { (label, icon) ->
-                ActionCard(label, icon, modifier = Modifier.weight(1f)) { 
+            actions.take(2).forEach { (label, icon, subtitle) ->
+                ActionCard(label, subtitle, icon, modifier = Modifier.weight(1f)) { 
                     onActionClick(actionQueries[label] ?: label) 
                 }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(LocalDimens.current.small))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.small),
             modifier = Modifier.fillMaxWidth()
         ) {
-            actions.drop(2).forEach { (label, icon) ->
-                ActionCard(label, icon, modifier = Modifier.weight(1f)) { 
+            actions.drop(2).forEach { (label, icon, subtitle) ->
+                ActionCard(label, subtitle, icon, modifier = Modifier.weight(1f)) { 
                     onActionClick(actionQueries[label] ?: label) 
                 }
             }
@@ -622,22 +624,30 @@ fun QuickActionCards(onActionClick: (String) -> Unit) {
 }
 
 @Composable
-fun ActionCard(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ActionCard(label: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val dimens = LocalDimens.current
     Surface(
         onClick = onClick,
-        modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.height(if (dimens.padding > 24.dp) 120.dp else 95.dp),
+        shape = RoundedCornerShape(dimens.cardCorner),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(dimens.small),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (dimens.padding > 24.dp) 24.dp else 20.dp))
+            Spacer(modifier = Modifier.height(dimens.extraSmall))
+            Text(label, style = if (dimens.padding > 24.dp) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = "\"$subtitle\"",
+                style = (if (dimens.padding > 24.dp) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall).copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -673,82 +683,117 @@ fun AiResultProductCard(
     onProductClick: () -> Unit,
     isDark: Boolean
 ) {
+    val dimens = LocalDimens.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(if (dimens.padding > 24.dp) 160.dp else 145.dp)
+            .clip(RoundedCornerShape(dimens.cardCorner))
             .clickable { onProductClick() },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(dimens.cardCorner),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Image Section with subtle gradient
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(130.dp)
-                    .background(if (isDark) Color(0xFF1C1C1E) else Color(0xFFF1F3F5))
+                    .width(if (dimens.padding > 24.dp) 140.dp else 120.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = if (isDark) listOf(Color(0xFF2C2C2E), Color(0xFF1C1C1E))
+                                     else listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9))
+                        )
+                    )
+                    .padding(12.dp)
             ) {
                 AsyncImage(
                     model = product.image,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Fit
                 )
+                
+                // AI Badge
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
+                ) {
+                    Text(
+                        "AI MATCH",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(16.dp)
+                    .padding(dimens.small)
             ) {
                 Text(
                     text = product.category.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = product.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 20.sp
+                    letterSpacing = 1.2.sp
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = product.title,
+                    style = if (dimens.padding > 24.dp) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = if (dimens.padding > 24.dp) 22.sp else 18.sp
+                )
+                
+                Spacer(modifier = Modifier.weight(1f))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text(
-                        text = formatPrice(product.price),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = "Price",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = formatPrice(product.price),
+                            style = if (dimens.padding > 24.dp) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clickable { onProductClick() }
                     ) {
                         Icon(
                             Icons.Rounded.ChevronRight,
-                            contentDescription = null,
+                            contentDescription = "Details",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(6.dp)
                         )
                     }
                 }

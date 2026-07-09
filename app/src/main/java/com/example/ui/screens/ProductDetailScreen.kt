@@ -31,10 +31,11 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.R
-import com.example.data.local.CartItem
+import com.example.core.database.data.CartItem
 import com.example.data.remote.ProductDto
 import com.example.data.repository.Resource
 import com.example.ui.viewmodel.MainViewModel
+import com.example.ui.theme.LocalDimens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +60,7 @@ fun ProductDetailScreen(
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val dimens = LocalDimens.current
     
     LaunchedEffect(product) {
         viewModel.loadFavorites(context)
@@ -86,7 +88,8 @@ fun ProductDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .statusBarsPadding()
+                    .padding(dimens.medium),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -105,7 +108,7 @@ fun ProductDetailScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(dimens.small)) {
                     IconButton(
                         onClick = { viewModel.notificationEvent.tryEmit("Shared exclusive link!") },
                         modifier = Modifier
@@ -137,8 +140,8 @@ fun ProductDetailScreen(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(32.dp)
+                        .padding(horizontal = dimens.padding),
+                    horizontalArrangement = Arrangement.spacedBy(dimens.extraLarge)
                 ) {
                     // Left Column: Image
                     Column(modifier = Modifier.weight(1f)) {
@@ -146,11 +149,11 @@ fun ProductDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(1f),
-                            shape = RoundedCornerShape(24.dp),
+                            shape = RoundedCornerShape(dimens.cardCorner * 1.5f),
                             colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().padding(dimens.large), contentAlignment = Alignment.Center) {
                                 AsyncImage(model = product.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                             }
                         }
@@ -163,10 +166,10 @@ fun ProductDetailScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         ProductInfoSection(product, isDark)
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(dimens.large))
                         ReviewSection(reviews)
                         if (similarProducts.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(dimens.large))
                             SimilarProductsSection(similarProducts, isDark, onProductClick)
                         }
                         Spacer(modifier = Modifier.height(100.dp))
@@ -178,24 +181,24 @@ fun ProductDetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = dimens.padding)
                 ) {
                     Card(
-                        modifier = Modifier.fillMaxWidth().height(300.dp),
-                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.fillMaxWidth().height(if (dimens.padding > 24.dp) 400.dp else 300.dp),
+                        shape = RoundedCornerShape(dimens.cardCorner * 1.5f),
                         colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxSize().padding(dimens.large), contentAlignment = Alignment.Center) {
                             AsyncImage(model = product.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(dimens.large))
                     ProductInfoSection(product, isDark)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = Color.Gray.copy(alpha = 0.1f))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = Color.Gray.copy(alpha = 0.1f))
                     ReviewSection(reviews)
                     if (similarProducts.isNotEmpty()) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = Color.Gray.copy(alpha = 0.1f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = Color.Gray.copy(alpha = 0.1f))
                         SimilarProductsSection(similarProducts, isDark, onProductClick)
                     }
                     Spacer(modifier = Modifier.height(100.dp))
@@ -207,35 +210,36 @@ fun ProductDetailScreen(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .then(if (isExpanded) Modifier.width(450.dp).padding(bottom = 24.dp) else Modifier.fillMaxWidth()),
-            shape = if (isExpanded) RoundedCornerShape(28.dp) else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                .navigationBarsPadding()
+                .then(if (isExpanded) Modifier.width(500.dp).padding(bottom = dimens.large) else Modifier.fillMaxWidth()),
+            shape = if (isExpanded) RoundedCornerShape(dimens.extraLarge) else RoundedCornerShape(topStart = dimens.large, topEnd = dimens.large),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shadowElevation = 16.dp,
             border = if (isExpanded) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(dimens.medium),
+                horizontalArrangement = Arrangement.spacedBy(dimens.small),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     onClick = { viewModel.addToCart(product) },
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f).height(dimens.buttonHeight),
+                    shape = RoundedCornerShape(dimens.cardCorner),
                     border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(Icons.Default.LocalMall, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add to Bag", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Icon(Icons.Default.LocalMall, null, modifier = Modifier.size(if (dimens.padding > 24.dp) 22.dp else 18.dp))
+                    Spacer(modifier = Modifier.width(dimens.extraSmall))
+                    Text("Add to Cart", fontWeight = FontWeight.Bold, fontSize = if (dimens.padding > 24.dp) 16.sp else 14.sp)
                 }
 
                 Button(
                     onClick = { showBuyNowSheet = true },
-                    modifier = Modifier.weight(1.2f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    modifier = Modifier.weight(1.2f).height(dimens.buttonHeight),
+                    shape = RoundedCornerShape(dimens.cardCorner)
                 ) {
-                    Text("Buy Now", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Buy Now", fontSize = if (dimens.padding > 24.dp) 18.sp else 16.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
@@ -293,6 +297,7 @@ fun ProductDetailScreen(
 
 @Composable
 fun ProductInfoSection(product: ProductDto, isDark: Boolean) {
+    val dimens = LocalDimens.current
     Column {
         Box(
             modifier = Modifier
@@ -309,17 +314,17 @@ fun ProductInfoSection(product: ProductDto, isDark: Boolean) {
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(dimens.small))
 
         Text(
             text = product.title,
-            fontSize = 26.sp,
+            fontSize = if (dimens.padding > 24.dp) 32.sp else 26.sp,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onBackground,
-            lineHeight = 32.sp
+            lineHeight = if (dimens.padding > 24.dp) 40.sp else 32.sp
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(dimens.medium))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -328,38 +333,39 @@ fun ProductInfoSection(product: ProductDto, isDark: Boolean) {
         ) {
             Text(
                 text = formatPrice(product.price),
-                fontSize = 32.sp,
+                fontSize = if (dimens.padding > 24.dp) 40.sp else 32.sp,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary
             )
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB200), modifier = Modifier.size(20.dp))
-                Text("4.8 (124 reviews)", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB200), modifier = Modifier.size(if (dimens.padding > 24.dp) 24.dp else 20.dp))
+                Text("4.8 (124 reviews)", fontSize = if (dimens.padding > 24.dp) 16.sp else 14.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = Color.Gray.copy(alpha = 0.1f))
+        HorizontalDivider(modifier = Modifier.padding(vertical = dimens.large), color = Color.Gray.copy(alpha = 0.1f))
 
-        Text(text = "Description", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = product.description, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
+        Text(text = "Description", fontSize = if (dimens.padding > 24.dp) 22.sp else 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(dimens.small))
+        Text(text = product.description, fontSize = if (dimens.padding > 24.dp) 17.sp else 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
     }
 }
 
 @Composable
 fun ReviewSection(reviews: List<ProductReview>) {
+    val dimens = LocalDimens.current
     Column {
-        Text(text = "Customer Reviews (${reviews.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = "Customer Reviews (${reviews.size})", fontSize = if (dimens.padding > 24.dp) 22.sp else 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(dimens.medium))
+        Column(verticalArrangement = Arrangement.spacedBy(dimens.small)) {
             reviews.forEach { r ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(dimens.cardCorner),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(dimens.medium)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(text = r.reviewer, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text(text = r.date, fontSize = 11.sp, color = Color.Gray)
@@ -379,22 +385,23 @@ fun ReviewSection(reviews: List<ProductReview>) {
 
 @Composable
 fun SimilarProductsSection(similarProducts: List<ProductDto>, isDark: Boolean, onProductClick: (ProductDto) -> Unit) {
+    val dimens = LocalDimens.current
     Column {
-        Text(text = "Similar Premium Products", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(text = "Similar Premium Products", fontSize = if (dimens.padding > 24.dp) 22.sp else 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(dimens.medium))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(dimens.medium)) {
             items(similarProducts) { simProduct ->
                 Card(
-                    modifier = Modifier.width(160.dp).clickable { onProductClick(simProduct) },
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.width(if (dimens.padding > 24.dp) 200.dp else 160.dp).clickable { onProductClick(simProduct) },
+                    shape = RoundedCornerShape(dimens.cardCorner),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(16.dp)).background(if (isDark) Color(0xFF3D3D42) else Color.White).padding(10.dp), contentAlignment = Alignment.Center) {
+                    Column(modifier = Modifier.padding(dimens.small), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.size(if (dimens.padding > 24.dp) 140.dp else 100.dp).clip(RoundedCornerShape(dimens.small)).background(if (isDark) Color(0xFF3D3D42) else Color.White).padding(10.dp), contentAlignment = Alignment.Center) {
                             AsyncImage(model = simProduct.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(dimens.small))
                         Text(text = simProduct.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(text = formatPrice(simProduct.price), fontSize = 14.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     }
