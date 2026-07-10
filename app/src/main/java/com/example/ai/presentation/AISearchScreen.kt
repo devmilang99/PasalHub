@@ -35,10 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ai.presentation.components.AiListeningAnimation
-import com.example.ui.screens.formatPrice
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
-import com.example.ui.viewmodel.MainViewModel
+import com.example.core.application.utils.screens.formatPrice
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
+import com.example.core.viewmodel.MainViewModel
 import com.example.ui.theme.LocalDimens
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -545,22 +545,6 @@ fun ResultsOrHistory(
                         )
                     }
                 }
-
-                item {
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
-                        Text(
-                            "Discover more",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Text(
-                            "Try searching for something specific",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
                 item {
                     QuickActionCards { query ->
                         onQuickActionClick(query)

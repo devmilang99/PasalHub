@@ -9,7 +9,7 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
-val dbVersion = 2
+val dbVersion = 4
 
 android {
   namespace = "com.example"
@@ -45,6 +45,9 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
+      isDebuggable = true
+      // Disable PNG crunching in debug builds
+      isCrunchPngs = false
     }
   }
   compileOptions {
@@ -114,9 +117,7 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
-  testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)

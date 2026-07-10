@@ -3,13 +3,13 @@ package com.example.dashboard.cart.data
 import android.content.Context
 import com.example.dashboard.cart.domain.CartRepository
 import com.example.core.database.data.*
-import com.example.data.repository.ShopRepository
+import com.example.dashboard.products.repository.ProductRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 class CartRepositoryImpl(
-    private val shopRepository: ShopRepository,
+    private val productRepository: ProductRepository,
     private val userDao: UserDao,
     private val cartDao: CartDao,
     private val orderDao: OrderDao,
@@ -49,7 +49,7 @@ class CartRepositoryImpl(
     override suspend fun checkout(selectedItems: List<CartItem>, finalTotal: Double, paymentMethod: String, appliedVoucher: String) {
         if (selectedItems.isNotEmpty()) {
             val user = userDao.getUser().first()
-            val summary = selectedItems.joinToString { "${it.title} x${it.quantity}" }
+            val summary = selectedItems.joinToString { "${it.title}|${it.image} x${it.quantity}" }
             val order = OrderEntity(
                 totalAmount = finalTotal,
                 itemsSummary = summary,

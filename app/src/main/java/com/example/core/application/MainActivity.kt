@@ -18,7 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.ai.data.GeminiSearchRouter
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai.presentation.AiSearchViewModel
 import com.example.ai.presentation.AISearchScreen
 import com.example.auth.forgotpassword.viewmodel.ForgotPasswordViewModel
@@ -28,19 +28,20 @@ import com.example.dashboard.cart.viewmodel.CartViewModel
 import com.example.dashboard.home.viewmodel.HomeViewModel
 import com.example.dashboard.order.viewmodel.OrderViewModel
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
-import com.example.data.repository.Resource
-import com.example.di.AppContainer
+import com.example.dashboard.products.repository.Resource
+import com.example.initial.di.AppContainer
 import com.example.dashboard.ui.DashboardScreen
 import com.example.initial.presentation.InitialViewModel
 import com.example.initial.presentation.splash.SplashScreen
 import com.example.initial.presentation.onboarding.OnboardingScreen
 import com.example.initial.presentation.permission.PermissionScreen
 import com.example.initial.presentation.theme.ThemeSelectionScreen
-import com.example.ui.screens.*
 import com.example.ui.theme.PasalHubTheme
 import com.example.ui.theme.ProvideDimens
-import com.example.ui.viewmodel.MainViewModel
+import com.example.core.viewmodel.MainViewModel
 import com.example.core.application.presentation.AppViewModel
+import com.example.dashboard.products.ui.ProductDetailScreen
+import com.example.dashboard.products.viewmodel.ProductDetailViewModel
 
 class ViewModelFactory(
     private val container: AppContainer
@@ -50,14 +51,13 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(MainViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
                 MainViewModel(
-                    container.shopRepository,
-                    container.appPreferencesRepository,
-                    container.geminiSearchRouter
+                    container.productRepository,
+                    container.appPreferencesRepository
                 ) as T
             }
             modelClass.isAssignableFrom(AiSearchViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
-                AiSearchViewModel(container.shopRepository, container.geminiSearchRouter) as T
+                AiSearchViewModel(container.productRepository, container.geminiSearchRouter) as T
             }
             modelClass.isAssignableFrom(LoginViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
@@ -77,7 +77,11 @@ class ViewModelFactory(
             }
             modelClass.isAssignableFrom(OrderViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
-                OrderViewModel(container.orderRepository) as T
+                OrderViewModel(
+                    container.orderRepository,
+                    container.appPreferencesRepository,
+                    container.notificationHelper
+                ) as T
             }
             modelClass.isAssignableFrom(CartViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
@@ -90,6 +94,13 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(InitialViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
                 InitialViewModel(container.initialRepository) as T
+            }
+            modelClass.isAssignableFrom(ProductDetailViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                ProductDetailViewModel(
+                    container.productRepository,
+                    container.appPreferencesRepository
+                ) as T
             }
             modelClass.isAssignableFrom(AppViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
@@ -110,17 +121,10 @@ class MainActivity : ComponentActivity() {
         val appContainer = (application as PasalHubApp).container
         val factory = ViewModelFactory(appContainer)
         
+        // These ViewModels are shared or used for app-level state
         val mainViewModel: MainViewModel by viewModels { factory }
-        val aiSearchViewModel: AiSearchViewModel by viewModels { factory }
-        val loginViewModel: LoginViewModel by viewModels { factory }
-        val registerViewModel: RegisterViewModel by viewModels { factory }
-        val forgotPasswordViewModel: ForgotPasswordViewModel by viewModels { factory }
-        val homeViewModel: HomeViewModel by viewModels { factory }
-        val orderViewModel: OrderViewModel by viewModels { factory }
-        val cartViewModel: CartViewModel by viewModels { factory }
-        val profileViewModel: ProfileViewModel by viewModels { factory }
-        val initialViewModel: InitialViewModel by viewModels { factory }
         val appViewModel: AppViewModel by viewModels { factory }
+        val initialViewModel: InitialViewModel by viewModels { factory }
 
         setContent {
             val isDarkTheme by appViewModel.isDarkTheme.collectAsState()
@@ -216,6 +220,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("login") {
+                                val loginViewModel: LoginViewModel = viewModel(factory = factory)
                                 com.example.auth.login.ui.LoginScreen(
                                     viewModel = loginViewModel,
                                     onNavigateToRegister = {
@@ -233,6 +238,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("forgot_password") {
+                                val forgotPasswordViewModel: ForgotPasswordViewModel = viewModel(factory = factory)
                                 com.example.auth.forgotpassword.ui.ForgotPasswordScreen(
                                     viewModel = forgotPasswordViewModel,
                                     onNavigateBack = {
@@ -242,6 +248,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("register") {
+                                val registerViewModel: RegisterViewModel = viewModel(factory = factory)
                                 com.example.auth.register.ui.RegisterScreen(
                                     viewModel = registerViewModel,
                                     onNavigateBackToLogin = {
@@ -256,6 +263,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("ai_search") {
+                                val aiSearchViewModel: AiSearchViewModel = viewModel(factory = factory)
                                 AISearchScreen(
                                     viewModel = mainViewModel,
                                     aiViewModel = aiSearchViewModel,
@@ -269,6 +277,11 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("dashboard") {
+                                val aiSearchViewModel: AiSearchViewModel = viewModel(factory = factory)
+                                val homeViewModel: HomeViewModel = viewModel(factory = factory)
+                                val orderViewModel: OrderViewModel = viewModel(factory = factory)
+                                val cartViewModel: CartViewModel = viewModel(factory = factory)
+                                val profileViewModel: ProfileViewModel = viewModel(factory = factory)
                                 DashboardScreen(
                                     viewModel = mainViewModel,
                                     appViewModel = appViewModel,
@@ -302,9 +315,11 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (product != null) {
+                                    val productDetailViewModel: ProductDetailViewModel = viewModel(factory = factory)
                                     ProductDetailScreen(
                                         product = product,
                                         viewModel = mainViewModel,
+                                        detailViewModel = productDetailViewModel,
                                         onBack = { navController.popBackStack() },
                                         onProductClick = { newProduct ->
                                             navController.navigate("product_detail/${newProduct.id}")

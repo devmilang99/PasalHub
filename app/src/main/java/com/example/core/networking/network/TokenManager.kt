@@ -1,7 +1,8 @@
-package com.example.data.network
+package com.example.core.networking.network
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 class TokenManager(context: Context) {
     private val prefs: SharedPreferences =
@@ -10,7 +11,7 @@ class TokenManager(context: Context) {
     fun getAccessToken(): String? = prefs.getString("access_token", null)
 
     fun saveAccessToken(token: String) {
-        prefs.edit().putString("access_token", token).apply()
+        prefs.edit { putString("access_token", token) }
     }
 
     fun getRefreshToken(): String? = prefs.getString("refresh_token", null)
@@ -20,6 +21,6 @@ class TokenManager(context: Context) {
     }
 
     fun clearTokens() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 }

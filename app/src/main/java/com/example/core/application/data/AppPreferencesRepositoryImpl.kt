@@ -14,9 +14,12 @@ class AppPreferencesRepositoryImpl(private val context: Context) : AppPreference
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
     
     private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", true))
+    private val _isThemeSet = MutableStateFlow(prefs.getBoolean("theme_set", false))
     private val _notificationEvent = MutableSharedFlow<String>()
 
     override fun isDarkTheme(): Flow<Boolean> = _isDarkTheme.asStateFlow()
+
+    override fun isThemeSet(): Flow<Boolean> = _isThemeSet.asStateFlow()
 
     override suspend fun toggleTheme() {
         val newValue = !_isDarkTheme.value
@@ -24,8 +27,12 @@ class AppPreferencesRepositoryImpl(private val context: Context) : AppPreference
     }
 
     override suspend fun setTheme(isDark: Boolean) {
-        prefs.edit { putBoolean("dark_theme", isDark) }
+        prefs.edit {
+            putBoolean("dark_theme", isDark)
+            putBoolean("theme_set", true)
+        }
         _isDarkTheme.value = isDark
+        _isThemeSet.value = true
     }
 
     override fun getNotificationEvent(): Flow<String> = _notificationEvent.asSharedFlow()

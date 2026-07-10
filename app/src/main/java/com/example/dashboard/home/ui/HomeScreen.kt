@@ -37,11 +37,11 @@ import com.example.R
 import com.example.ai.presentation.components.AiListeningAnimation
 import com.example.ai.presentation.AiSearchViewModel
 import kotlinx.coroutines.delay
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.home.viewmodel.HomeViewModel
-import com.example.ui.screens.formatPrice
-import com.example.ui.screens.shimmerEffect
+import com.example.core.application.utils.screens.formatPrice
+import com.example.core.application.utils.screens.shimmerEffect
 import com.example.ui.theme.LocalDimens
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -481,7 +481,7 @@ fun HomeScreen(
             )
 
             IconButton(
-                onClick = { viewModel.toggleTheme(context) },
+                onClick = { viewModel.toggleTheme() },
                 modifier = Modifier
                     .size(52.dp)
                     .clip(RoundedCornerShape(dimens.cardCorner))
@@ -912,7 +912,7 @@ fun ProductCardItem(
 
                 IconButton(
                     onClick = { 
-                        viewModel.toggleFavorite(context, product.id)
+                        viewModel.toggleFavorite(product.id)
                     },
                     modifier = Modifier
                         .align(Alignment.TopEnd)

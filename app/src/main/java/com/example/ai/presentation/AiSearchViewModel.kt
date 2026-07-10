@@ -4,14 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai.data.GeminiSearchRouter
 import com.example.ai.domain.model.SearchIntent
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
-import com.example.data.repository.ShopRepository
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
+import com.example.dashboard.products.repository.ProductRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class AiSearchViewModel(
-    private val repository: ShopRepository,
+    private val repository: ProductRepository,
     private val geminiRouter: GeminiSearchRouter
 ) : ViewModel() {
 
@@ -25,7 +25,6 @@ class AiSearchViewModel(
     val aiSearchError: StateFlow<String?> = _aiSearchError.asStateFlow()
 
     private val _aiSearchIntent = MutableStateFlow<SearchIntent?>(null)
-    val aiSearchIntent: StateFlow<SearchIntent?> = _aiSearchIntent.asStateFlow()
 
     private val _recommendationMessage = MutableStateFlow<String?>(null)
     val recommendationMessage: StateFlow<String?> = _recommendationMessage.asStateFlow()
@@ -177,9 +176,5 @@ class AiSearchViewModel(
 
     fun clearHistory() {
         _searchHistory.value = emptyList()
-    }
-
-    fun refreshProducts() {
-        _refreshTrigger.value = System.currentTimeMillis()
     }
 }

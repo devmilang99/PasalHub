@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface AppPreferencesRepository {
     fun isDarkTheme(): Flow<Boolean>
+    fun isThemeSet(): Flow<Boolean>
     suspend fun toggleTheme()
     suspend fun setTheme(isDark: Boolean)
     

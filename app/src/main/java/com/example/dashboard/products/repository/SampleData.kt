@@ -1,6 +1,6 @@
-package com.example.data.repository
+package com.example.dashboard.products.repository
 
-import com.example.data.remote.ProductDto
+import com.example.core.networking.remote.ProductDto
 
 object SampleData {
     val products: List<ProductDto> by lazy {

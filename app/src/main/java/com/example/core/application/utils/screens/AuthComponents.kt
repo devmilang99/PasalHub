@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.example.core.application.utils.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,15 +21,19 @@ fun LoginTextField(
     label: String,
     leadingIcon: ImageVector,
     modifier: Modifier = Modifier,
+    isDark: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: @Composable (() -> Unit)? = null,
     testTag: String = ""
 ) {
+    val textColor = if (isDark) Color.White else Color.Black
+    val containerColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall) },
+        label = { Text(label, color = textColor.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall) },
         leadingIcon = {
             Icon(
                 imageVector = leadingIcon,
@@ -44,12 +48,12 @@ fun LoginTextField(
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+            focusedTextColor = textColor,
+            unfocusedTextColor = textColor,
             cursorColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+            focusedContainerColor = containerColor,
+            unfocusedContainerColor = containerColor
         ),
         keyboardOptions = KeyboardOptions(
             keyboardType = keyboardType,

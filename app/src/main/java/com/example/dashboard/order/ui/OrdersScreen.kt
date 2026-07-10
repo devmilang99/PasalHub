@@ -22,7 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -33,15 +32,16 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.core.database.data.OrderEntity
 import com.example.dashboard.order.viewmodel.OrderViewModel
-import com.example.ui.screens.parseItemsSummary
+import com.example.core.application.utils.screens.parseItemsSummary
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun OrdersScreen(viewModel: OrderViewModel) {
     val orders by viewModel.ordersState.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()
-    val sdf = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
+    val sdf = SimpleDateFormat("MMM dd, yyyy - HH:mm", LocalLocale.current.platformLocale)
     var selectedSubTab by remember { mutableStateOf("Recent") }
     var orderToRate by remember { mutableStateOf<OrderEntity?>(null) }
 
@@ -64,13 +64,39 @@ fun OrdersScreen(viewModel: OrderViewModel) {
             .background(bgColor)
             .padding(16.dp)
     ) {
-        Text(
-            text = "My Orders",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = textColor,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "My Orders",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = textColor
+            )
+            
+            IconButton(
+                onClick = {
+                    viewModel.placeOrder(
+                        OrderEntity(
+                            totalAmount = 5200.0,
+                            itemsSummary = "1x Wireless Headphones|https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg|#E3F2FD",
+                            status = "Placed",
+                            quantity = 1,
+                            address = "456 Innovation Blvd, Lalitpur",
+                            seller = "Pasal Hub Gadgets",
+                            progress = 0
+                        )
+                    )
+                },
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Simulate Order", tint = textColor)
+            }
+        }
 
         Surface(
             modifier = Modifier
@@ -148,6 +174,31 @@ fun OrdersScreen(viewModel: OrderViewModel) {
                         fontSize = 12.sp,
                         color = mutedTextColor.copy(alpha = 0.6f)
                     )
+                    
+                    if (selectedSubTab == "Recent") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                viewModel.placeOrder(
+                                    OrderEntity(
+                                        totalAmount = 4500.0,
+                                        itemsSummary = "1x Premium Leather Bag|https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg|#E3F2FD",
+                                        status = "Placed",
+                                        quantity = 1,
+                                        address = "123 Tech Avenue, Kathmandu",
+                                        seller = "Pasal Hub Elite",
+                                        progress = 0
+                                    )
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Initiate 60s Tracking Mock")
+                        }
+                    }
                 }
             }
         } else {
@@ -159,251 +210,20 @@ fun OrdersScreen(viewModel: OrderViewModel) {
                 contentPadding = PaddingValues(bottom = 96.dp)
             ) {
                 items(filteredOrders, key = { it.orderId }) { order ->
-                    if (order.status == "Placing" && selectedSubTab == "Recent") {
-                        PlacingOrderCountdownCard(order = order, viewModel = viewModel, sdf = sdf, isDark = isDark)
-                    } else {
-                        ModernOrderCard(
-                            order = order,
-                            sdf = sdf,
-                            tabType = selectedSubTab,
-                            onRateClick = { orderToRate = order },
-                            isDark = isDark
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PlacingOrderCountdownCard(
-    order: OrderEntity,
-    viewModel: OrderViewModel,
-    sdf: SimpleDateFormat,
-    isDark: Boolean
-) {
-    var timeLeft by remember { mutableStateOf(10) }
-    var isPaused by remember { mutableStateOf(false) }
-    var showCancelDialog by remember { mutableStateOf(false) }
-    var customReason by remember { mutableStateOf("") }
-    val reasons = listOf("Changed my mind", "Shipping is too slow", "Incorrect address details", "Found a better deal", "Other")
-    var selectedReason by remember { mutableStateOf(reasons[0]) }
-
-    val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
-    val textColor = if (isDark) Color.White else Color(0xFF212529)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF6C757D)
-
-    LaunchedEffect(isPaused) {
-        if (!isPaused) {
-            while (timeLeft > 0) {
-                kotlinx.coroutines.delay(1000)
-                timeLeft--
-            }
-            viewModel.updateOrderStatus(order.orderId, "Placed")
-        }
-    }
-
-    if (showCancelDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showCancelDialog = false
-                isPaused = false
-            },
-            title = { Text("Cancel Order Reasons", fontWeight = FontWeight.Bold, color = textColor) },
-            containerColor = cardColor,
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Please select or provide the reason why you wish to cancel this premium order:",
-                        fontSize = 13.sp,
-                        color = mutedTextColor
+                    ModernOrderCard(
+                        order = order,
+                        sdf = sdf,
+                        tabType = selectedSubTab,
+                        onRateClick = { orderToRate = order },
+                        isDark = isDark
                     )
-                    reasons.forEach { reason ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedReason = reason }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(
-                                selected = selectedReason == reason,
-                                onClick = { selectedReason = reason },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = Color(0xFFE57373),
-                                    unselectedColor = mutedTextColor
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = reason, fontSize = 14.sp, color = textColor)
-                        }
-                    }
-                    if (selectedReason == "Other") {
-                        OutlinedTextField(
-                            value = customReason,
-                            onValueChange = { customReason = it },
-                            placeholder = { Text("Write cancellation reason here...", fontSize = 12.sp, color = mutedTextColor) },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = textColor,
-                                unfocusedTextColor = textColor,
-                                focusedBorderColor = Color(0xFFE57373),
-                                unfocusedBorderColor = mutedTextColor.copy(alpha = 0.4f)
-                            )
-                        )
-                    }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val finalReason = if (selectedReason == "Other") customReason else selectedReason
-                        viewModel.cancelOrder(order.orderId, if (finalReason.isBlank()) "No cancellation reason selected" else finalReason)
-                        showCancelDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE57373), contentColor = Color.White)
-                ) {
-                    Text("Cancel Order")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showCancelDialog = false
-                        isPaused = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = mutedTextColor)
-                ) {
-                    Text("Resume")
-                }
-            }
-        )
-    }
-
-    val parsedItems = remember(order.itemsSummary) { parseItemsSummary(order.itemsSummary) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("placing_countdown_card_${order.orderId}"),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        border = BorderStroke(1.5.dp, Color(0xFFD48A37))
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(36.dp).border(2.dp, Color(0xFFE57373), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = timeLeft.toString(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE57373))
-                    }
-
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = Color(0xFFE57373), modifier = Modifier.size(12.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "CANCELLATION WINDOW", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE57373))
-                        }
-                        Text(text = "Hurry! Window closing soon...", fontSize = 12.sp, color = textColor)
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        isPaused = true
-                        showCancelDialog = true
-                    },
-                    modifier = Modifier.height(34.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color(0xFFE57373)),
-                    border = BorderStroke(1.dp, Color(0xFFE57373)),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                ) {
-                    Text(text = "CANCEL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            HorizontalDivider(color = mutedTextColor.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(text = "#ORD-${1000 + order.orderId}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textColor)
-                    Text(text = sdf.format(Date(order.date)), fontSize = 11.sp, color = mutedTextColor)
-                }
-
-                Box(
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF2C2415)).padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(text = "PENDING", color = Color(0xFFFFB74D), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                parsedItems.forEach { item ->
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(item.bgColor).padding(4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(model = item.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(text = item.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Storefront, contentDescription = null, tint = mutedTextColor, modifier = Modifier.size(10.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Eco Store", fontSize = 11.sp, color = mutedTextColor)
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFFB74D), modifier = Modifier.size(12.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "DELIVERY ADDRESS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFB74D), letterSpacing = 1.sp)
-                }
-                Text(text = order.address, fontSize = 12.sp, color = textColor.copy(alpha = 0.9f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                Column {
-                    Text(text = "Total Amount", fontSize = 11.sp, color = mutedTextColor)
-                    Text(text = "Rs. ${order.totalAmount.toInt()}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFB74D))
-                }
-                Text(text = "${order.quantity} items", fontSize = 12.sp, color = mutedTextColor, fontWeight = FontWeight.Medium)
             }
         }
     }
 }
+
+
 
 @Composable
 fun RateAndReviewDialog(order: OrderEntity, viewModel: OrderViewModel, onDismiss: () -> Unit, isDark: Boolean) {
@@ -474,23 +294,20 @@ fun RateAndReviewDialog(order: OrderEntity, viewModel: OrderViewModel, onDismiss
 fun ModernOrderCard(order: OrderEntity, sdf: SimpleDateFormat, tabType: String, onRateClick: () -> Unit, isDark: Boolean) {
     val parsedItems = remember(order.itemsSummary) { parseItemsSummary(order.itemsSummary) }
 
-    val progressPercent = when (order.status) {
-        "Placed" -> 10
-        "Packaging", "Packing" -> 30
-        "Sent for Delivery", "On Way" -> 80
-        "Delivered", "Completed" -> 100
-        else -> 0
-    }
+    // Logic: Every 5 sec update by 15% (simulated status mapping)
+    // Placed (5s) -> Packing (10s) -> Shipping (15s) -> Delivered (100%)
+    val progressPercent = if (order.status == "Cancelled") 0 else order.progress
 
     val animatedProgress by animateFloatAsState(
         targetValue = progressPercent / 100f,
-        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
         label = "DeliveryProgressAnimation"
     )
 
     val displayStatus = when (order.status) {
-        "Placed", "Packaging", "Packing" -> "PACKING"
-        "Sent for Delivery", "On Way" -> "ON WAY"
+        "Placed" -> "PLACED"
+        "Packaging", "Packing" -> "PACKING"
+        "Sent for Delivery", "On Way", "Shipping" -> "ON WAY"
         "Delivered" -> "DELIVERED"
         "Completed" -> "COMPLETED"
         "Cancelled" -> "CANCELLED"
@@ -498,16 +315,18 @@ fun ModernOrderCard(order: OrderEntity, sdf: SimpleDateFormat, tabType: String, 
     }
 
     val statusBgColor = when (order.status) {
-        "Placed", "Packaging", "Packing" -> if (isDark) Color(0xFF1E293B) else Color(0xFFE0F2F1)
-        "Sent for Delivery", "On Way" -> if (isDark) Color(0xFF142B23) else Color(0xFFE8F5E9)
+        "Placed" -> if (isDark) Color(0xFF1E293B) else Color(0xFFE3F2FD)
+        "Packaging", "Packing" -> if (isDark) Color(0xFF1E293B) else Color(0xFFE0F2F1)
+        "Sent for Delivery", "On Way", "Shipping" -> if (isDark) Color(0xFF142B23) else Color(0xFFE8F5E9)
         "Delivered", "Completed" -> if (isDark) Color(0xFF1E2E20) else Color(0xFFF1F8E9)
         "Cancelled" -> if (isDark) Color(0xFF2E1B1B) else Color(0xFFFFEBEE)
         else -> if (isDark) Color(0xFF2C2D30) else Color(0xFFECEFF1)
     }
 
     val statusTextColor = when (order.status) {
-        "Placed", "Packaging", "Packing" -> if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B)
-        "Sent for Delivery", "On Way" -> if (isDark) Color(0xFF4ADE80) else Color(0xFF2E7D32)
+        "Placed" -> if (isDark) Color(0xFF38BDF8) else Color(0xFF1976D2)
+        "Packaging", "Packing" -> if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B)
+        "Sent for Delivery", "On Way", "Shipping" -> if (isDark) Color(0xFF4ADE80) else Color(0xFF2E7D32)
         "Delivered", "Completed" -> if (isDark) Color(0xFF4ADE80) else Color(0xFF33691E)
         "Cancelled" -> if (isDark) Color(0xFFF87171) else Color(0xFFC62828)
         else -> if (isDark) Color.White else Color(0xFF455A64)
@@ -529,12 +348,31 @@ fun ModernOrderCard(order: OrderEntity, sdf: SimpleDateFormat, tabType: String, 
                 Column {
                     Text(text = "#ORD-${1000 + order.orderId}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textColor)
                     Text(text = sdf.format(Date(order.date)), fontSize = 11.sp, color = mutedTextColor)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = order.address.split(",").first().trim(),
+                            fontSize = 11.sp,
+                            color = mutedTextColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(statusBgColor).padding(horizontal = 10.dp, vertical = 6.dp)) {
                     Text(text = displayStatus, color = statusTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
+
+            // Space between header and items
+            Spacer(modifier = Modifier.height(8.dp))
 
             HorizontalDivider(color = mutedTextColor.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 12.dp))
 
@@ -557,18 +395,7 @@ fun ModernOrderCard(order: OrderEntity, sdf: SimpleDateFormat, tabType: String, 
                 }
             }
 
-            if (tabType == "Recent" || tabType == "Completed") {
-                Spacer(modifier = Modifier.height(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val addrIconColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B)
-                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = addrIconColor, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "DELIVERY ADDRESS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = addrIconColor, letterSpacing = 1.sp)
-                    }
-                    Text(text = order.address, fontSize = 12.sp, color = textColor.copy(alpha = 0.9f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -595,9 +422,47 @@ fun ModernOrderCard(order: OrderEntity, sdf: SimpleDateFormat, tabType: String, 
                     tileMode = TileMode.Repeated
                 )
 
+                val infiniteTransition = rememberInfiniteTransition(label = "LivePulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.4f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(800, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "PulseAlpha"
+                )
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Order Progress", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = textColor)
-                    Text(text = "${(animatedProgress * 100).toInt()}%", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Sensors,
+                                contentDescription = null,
+                                tint = (if (isDark) Color(0xFF38BDF8) else Color(0xFF1976D2)).copy(alpha = pulseAlpha),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "LIVE TRACKING ACTIVE", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = textColor)
+                        }
+                        
+                        val liveStatusText = when {
+                            order.status == "Placed" -> "Order confirmed, preparing for dispatch"
+                            order.status == "Packaging" -> "Items are being packed by the seller"
+                            order.status == "Sent for Delivery" && order.progress < 75 -> "On the way to your local hub"
+                            order.status == "Sent for Delivery" && order.progress >= 75 -> "Out for final delivery nearby"
+                            order.status == "Delivered" -> "Package arrived at your doorstep"
+                            else -> "Fetching live status..."
+                        }
+                        Text(text = liveStatusText, fontSize = 11.sp, color = mutedTextColor.copy(alpha = 0.8f))
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "${(animatedProgress * 100).toInt()}%", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                        if (order.status != "Delivered" && order.status != "Completed" && order.status != "Cancelled") {
+                            val secondsRemaining = ((100 - (animatedProgress * 100)) * 0.6).toInt()
+                            Text(text = "~${secondsRemaining}s left", fontSize = 9.sp, color = mutedTextColor.copy(alpha = 0.6f))
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

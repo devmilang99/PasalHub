@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.example.dashboard.products.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,20 +22,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.example.R
 import com.example.core.database.data.CartItem
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
-import com.example.ui.viewmodel.MainViewModel
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.viewmodel.ProductDetailViewModel
+import com.example.dashboard.products.repository.Resource
+import com.example.core.application.utils.screens.BuyNowBottomSheet
+import com.example.core.application.utils.screens.OrderSummaryScreen
+import com.example.core.application.utils.screens.ProductReview
+import com.example.core.application.utils.screens.formatPrice
+import com.example.core.application.utils.screens.getMockReviewsForCategory
+import com.example.core.viewmodel.MainViewModel
 import com.example.ui.theme.LocalDimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +45,7 @@ import com.example.ui.theme.LocalDimens
 fun ProductDetailScreen(
     product: ProductDto,
     viewModel: MainViewModel,
+    detailViewModel: ProductDetailViewModel,
     onBack: () -> Unit,
     onProductClick: (ProductDto) -> Unit,
     onOrderPlaced: () -> Unit
@@ -53,17 +57,18 @@ fun ProductDetailScreen(
     var buyNowVoucher by remember { mutableStateOf(Pair("None", 0.0)) }
     var buyNowPaymentMethod by remember { mutableStateOf("E-sewa") }
     
-    val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val favoriteIds by detailViewModel.favoriteIds.collectAsState()
     val isFavorited = favoriteIds.contains(product.id)
     val currentUser by viewModel.currentUser.collectAsState()
-    val isDark by viewModel.isDarkTheme.collectAsState()
+    val isDark by detailViewModel.isDarkTheme.collectAsState()
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
     val dimens = LocalDimens.current
     
     LaunchedEffect(product) {
-        viewModel.loadFavorites(context)
+        detailViewModel.loadFavorites(context)
+        detailViewModel.loadSettings(context)
     }
 
     val productResource by viewModel.homeProductsState.collectAsState()
@@ -102,7 +107,7 @@ fun ProductDetailScreen(
                         .testTag("detail_back_button")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Navigate Back",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -110,7 +115,7 @@ fun ProductDetailScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(dimens.small)) {
                     IconButton(
-                        onClick = { viewModel.notificationEvent.tryEmit("Shared exclusive link!") },
+                        onClick = { detailViewModel.notificationEvent.tryEmit("Shared exclusive link!") },
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
@@ -120,7 +125,7 @@ fun ProductDetailScreen(
                     }
 
                     IconButton(
-                        onClick = { viewModel.toggleFavorite(context, product.id) },
+                        onClick = { detailViewModel.toggleFavorite(context, product.id) },
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
@@ -224,7 +229,7 @@ fun ProductDetailScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = { viewModel.addToCart(product) },
+                    onClick = { detailViewModel.addToCart(product) },
                     modifier = Modifier.weight(1f).height(dimens.buttonHeight),
                     shape = RoundedCornerShape(dimens.cardCorner),
                     border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
@@ -247,7 +252,6 @@ fun ProductDetailScreen(
         if (showBuyNowSheet) {
             BuyNowBottomSheet(
                 product = product,
-                viewModel = viewModel,
                 selectedVoucher = buyNowVoucher,
                 onVoucherChange = { buyNowVoucher = it },
                 selectedPaymentMethod = buyNowPaymentMethod,
@@ -275,21 +279,24 @@ fun ProductDetailScreen(
             }
             val addressText = currentUser?.address ?: "Default Address, New York"
             OrderSummaryScreen(
-                listOf(tempCartItem),
-                buyNowPaymentMethod,
-                { buyNowPaymentMethod = it },
-                buyNowVoucher,
-                { buyNowVoucher = it },
-                listOf(Pair("None", 0.0), Pair("PASALPREMIUM", 150.0), Pair("PASALSAVINGS", 300.0)),
-                { showBuyNowReceipt = false },
-                {
+                selectedItems = listOf(tempCartItem),
+                selectedPaymentMethod = buyNowPaymentMethod,
+                onDismiss = { showBuyNowReceipt = false },
+                onConfirm = {
                     val discounted = (product.price - buyNowVoucher.second).coerceAtLeast(0.0)
-                    viewModel.placeDirectOrder(context, product, discounted * 1.05, buyNowPaymentMethod, buyNowVoucher.first)
+                    detailViewModel.placeDirectOrder(
+                        context,
+                        product,
+                        discounted * 1.05,
+                        buyNowPaymentMethod,
+                        buyNowVoucher.first
+                    )
                     showBuyNowReceipt = false
                     onOrderPlaced()
                 },
                 currentUserAddress = addressText,
-                isDark = isDark
+                isDark = isDark,
+                selectedVoucher = buyNowVoucher
             )
         }
     }

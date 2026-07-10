@@ -3,13 +3,15 @@ package com.example.auth.login.data
 import android.content.Context
 import androidx.core.content.edit
 import com.example.auth.login.domain.LoginRepository
+import com.example.core.application.domain.AppPreferencesRepository
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
 import kotlinx.coroutines.flow.Flow
 
 class LoginRepositoryImpl(
     private val userDao: UserDao,
-    private val context: Context
+    private val context: Context,
+    private val appPrefs: AppPreferencesRepository
 ) : LoginRepository {
     
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -36,4 +38,6 @@ class LoginRepositoryImpl(
     override fun saveLastEmail(email: String) {
         prefs.edit { putString("last_email", email) }
     }
+
+    override fun isDarkTheme(): Flow<Boolean> = appPrefs.isDarkTheme()
 }

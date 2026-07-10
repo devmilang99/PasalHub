@@ -1,19 +1,20 @@
 package com.example.dashboard.profile.data
 
 import android.content.Context
-import androidx.core.content.edit
+import com.example.core.application.domain.AppPreferencesRepository
 import com.example.dashboard.profile.domain.ProfileRepository
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
-import com.example.data.repository.ShopRepository
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
+import com.example.dashboard.products.repository.ProductRepository
 import kotlinx.coroutines.flow.*
 
 class ProfileRepositoryImpl(
-    private val shopRepository: ShopRepository,
+    private val productRepository: ProductRepository,
     private val userDao: UserDao,
-    private val context: Context
+    private val context: Context,
+    private val appPrefs: AppPreferencesRepository
 ) : ProfileRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -28,7 +29,7 @@ class ProfileRepositoryImpl(
         emit(favStrings.mapNotNull { it.toIntOrNull() }.toSet())
     }
 
-    override fun getProducts(): Flow<Resource<List<ProductDto>>> = shopRepository.getProducts()
+    override fun getProducts(): Flow<Resource<List<ProductDto>>> = productRepository.getProducts()
 
     override fun getMemberPoints(email: String): Flow<Int> = flow {
         emit(pointsPrefs.getInt("pts_$email", 250))
@@ -38,9 +39,7 @@ class ProfileRepositoryImpl(
         emit(passPrefs.getString("pwd_$email", "password") ?: "password")
     }
 
-    override fun isDarkTheme(): Flow<Boolean> = flow {
-        emit(prefs.getBoolean("dark_theme", true))
-    }
+    override fun isDarkTheme(): Flow<Boolean> = appPrefs.isDarkTheme()
 
     override suspend fun updateAddress(address: String) {
         userDao.getUser().first()?.let { user ->

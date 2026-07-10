@@ -38,5 +38,6 @@ data class OrderEntity(
     val seller: String = "Pasal Hub",
     val cancelledReason: String? = null,
     val rating: Int = 0,
-    val review: String? = null
+    val review: String? = null,
+    val progress: Int = 0
 )

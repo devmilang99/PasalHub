@@ -1,4 +1,4 @@
-package com.example.data.remote
+package com.example.core.networking.remote
 
 import retrofit2.http.GET
 import retrofit2.http.Path

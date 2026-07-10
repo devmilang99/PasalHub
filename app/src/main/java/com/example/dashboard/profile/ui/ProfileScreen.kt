@@ -1,5 +1,6 @@
 package com.example.dashboard.profile.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,6 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.rounded.AssignmentReturn
+import androidx.compose.material.icons.automirrored.rounded.Chat
+import androidx.compose.material.icons.automirrored.rounded.HelpCenter
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -24,21 +28,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
-import com.example.ui.screens.MyReviewsScreen
-import com.example.ui.screens.PasalHubAlertDialog
-import com.example.ui.screens.formatPrice
+import com.example.core.application.utils.screens.MyReviewsScreen
+import com.example.core.application.utils.screens.PasalHubAlertDialog
+import com.example.core.application.utils.screens.formatPrice
 import com.example.ui.theme.LocalDimens
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -46,7 +50,6 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onProductClick: (ProductDto) -> Unit
 ) {
-    val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
     val productResource by viewModel.homeProductsState.collectAsState()
@@ -58,10 +61,10 @@ fun ProfileScreen(
     val screenHeight = configuration.screenHeightDp
 
     LaunchedEffect(currentUser) {
-        viewModel.loadFavorites(context)
-        viewModel.loadMemberPoints(context)
+        viewModel.loadFavorites()
+        viewModel.loadMemberPoints()
         currentUser?.email?.let { email ->
-            viewModel.loadPassword(context, email)
+            viewModel.loadPassword(email)
         }
     }
 
@@ -287,7 +290,7 @@ fun ProfileScreen(
                                     showFavoritesSheet = false
                                     onProductClick(prod)
                                 },
-                                onRemove = { viewModel.toggleFavorite(context, prod.id) },
+                                onRemove = { viewModel.toggleFavorite(prod.id) },
                                 isDark = isDark
                             )
                         }
@@ -325,7 +328,7 @@ fun ProfileScreen(
             onDismiss = { showPasswordSheet = false },
             storedPassword = storedPassword ?: "",
             onUpdate = { newPass ->
-                viewModel.updatePassword(context, currentUser?.email ?: "", newPass)
+                viewModel.updatePassword(currentUser?.email ?: "", newPass)
                 showPasswordSheet = false
             },
             isDark = isDark
@@ -453,7 +456,6 @@ fun CustomerSupportBottomSheet(
     val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
     val textColor = if (isDark) Color.White else Color(0xFF212529)
     val mutedTextColor = if (isDark) Color.Gray else Color(0xFF6C757D)
-    val accentColor = MaterialTheme.colorScheme.primary
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -486,7 +488,7 @@ fun CustomerSupportBottomSheet(
             
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 SupportItem(
-                    icon = Icons.Rounded.HelpCenter,
+                    icon = Icons.AutoMirrored.Rounded.HelpCenter,
                     title = "Help Center & FAQs",
                     description = "Find quick answers to common questions",
                     isDark = isDark
@@ -498,13 +500,13 @@ fun CustomerSupportBottomSheet(
                     isDark = isDark
                 )
                 SupportItem(
-                    icon = Icons.Rounded.AssignmentReturn,
+                    icon = Icons.AutoMirrored.Rounded.AssignmentReturn,
                     title = "Returns & Refunds",
                     description = "Learn about our easy return process",
                     isDark = isDark
                 )
                 SupportItem(
-                    icon = Icons.Rounded.Chat,
+                    icon = Icons.AutoMirrored.Rounded.Chat,
                     title = "Live Chat",
                     description = "Talk to our representative right now",
                     isDark = isDark,

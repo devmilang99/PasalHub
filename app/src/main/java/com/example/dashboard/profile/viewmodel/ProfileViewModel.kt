@@ -1,12 +1,11 @@
 package com.example.dashboard.profile.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dashboard.profile.domain.ProfileRepository
 import com.example.core.database.data.UserEntity
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -32,7 +31,7 @@ class ProfileViewModel(
     val isDarkTheme: StateFlow<Boolean> = repository.isDarkTheme()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    fun loadMemberPoints(context: Context) {
+    fun loadMemberPoints() {
         viewModelScope.launch {
             currentUser.value?.email?.let { email ->
                 repository.getMemberPoints(email).collect {
@@ -42,7 +41,7 @@ class ProfileViewModel(
         }
     }
 
-    fun loadPassword(context: Context, email: String) {
+    fun loadPassword(email: String) {
         viewModelScope.launch {
             repository.getPassword(email).collect {
                 _userPassword.value = it
@@ -50,7 +49,7 @@ class ProfileViewModel(
         }
     }
 
-    fun loadFavorites(context: Context) {
+    fun loadFavorites() {
         // Already loaded via favoriteIds stateIn
     }
 
@@ -60,14 +59,14 @@ class ProfileViewModel(
         }
     }
 
-    fun updatePassword(context: Context, email: String, newPass: String) {
+    fun updatePassword(email: String, newPass: String) {
         viewModelScope.launch {
             repository.updatePassword(email, newPass)
             _userPassword.value = newPass
         }
     }
 
-    fun toggleFavorite(context: Context, productId: Int) {
+    fun toggleFavorite(productId: Int) {
         viewModelScope.launch {
             repository.toggleFavorite(productId)
         }

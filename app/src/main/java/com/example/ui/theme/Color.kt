@@ -21,5 +21,4 @@ val DarkSurface = Color(0xFF121212)        // Near Black
 val DarkTextPrimary = Color(0xFFF8FAFC)    // Slate 50
 val DarkTextSecondary = Color(0xFF94A3B8)  // Slate 400
 
-val SuccessGreen = Color(0xFF10B981)
 val AlertRed = Color(0xFFEF4444)

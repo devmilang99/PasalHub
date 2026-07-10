@@ -1,6 +1,5 @@
 package com.example.auth.register.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,9 +29,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.auth.register.viewmodel.RegisterViewModel
-import com.example.ui.screens.AuthDialogState
-import com.example.ui.screens.PasalHubAuthDialog
+import com.example.core.application.utils.screens.AuthDialogState
+import com.example.core.application.utils.screens.PasalHubAuthDialog
 import com.example.ui.theme.LocalDimens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,17 +104,39 @@ fun RegisterScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.background
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Background Image with Theme-aware Selection
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = if (isDark) R.drawable.image_bg_dark else R.drawable.image_bg_light),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            alpha = if (isDark) 0.6f else 0.8f
+        )
+        
+        // Dynamic Scrim for aesthetic theme-based background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Black.copy(alpha = 0.85f),
+                                Color.Black
+                            )
+                        } else {
+                            listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.95f),
+                                Color.White
+                            )
+                        }
                     )
                 )
-            )
-    ) {
+        )
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()

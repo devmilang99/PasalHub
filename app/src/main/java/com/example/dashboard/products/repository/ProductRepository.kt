@@ -1,4 +1,4 @@
-package com.example.data.repository
+package com.example.dashboard.products.repository
 
 import com.example.core.database.data.CartDao
 import com.example.core.database.data.CartItem
@@ -6,8 +6,8 @@ import com.example.core.database.data.OrderDao
 import com.example.core.database.data.OrderEntity
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
-import com.example.data.remote.FakeStoreApi
-import com.example.data.remote.ProductDto
+import com.example.core.networking.remote.FakeStoreApi
+import com.example.core.networking.remote.ProductDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -17,7 +17,7 @@ sealed interface Resource<out T> {
     data class Error(val message: String) : Resource<Nothing>
 }
 
-class ShopRepository(
+class ProductRepository(
     private val api: FakeStoreApi,
     private val userDao: UserDao,
     private val cartDao: CartDao,
@@ -68,8 +68,6 @@ class ShopRepository(
 
     suspend fun updateCartItem(item: CartItem) = cartDao.updateCartItem(item)
 
-    suspend fun deleteCartItem(item: CartItem) = cartDao.deleteCartItem(item)
-
     suspend fun clearCart() = cartDao.clearCart()
 
     // Order operations
@@ -86,10 +84,5 @@ class ShopRepository(
 
     // User operations
     fun getUser(): Flow<UserEntity?> = userDao.getUser()
-
-    suspend fun getUserByEmail(email: String): UserEntity? = userDao.getUserByEmail(email)
-
-    suspend fun saveUser(user: UserEntity) = userDao.insertUser(user)
-
     suspend fun clearUser() = userDao.clearUser()
 }

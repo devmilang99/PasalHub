@@ -1,5 +1,6 @@
-package com.example.ui.screens
+package com.example.core.application.utils.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -8,8 +9,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,63 +24,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.example.core.application.utils.NetworkUtils
 import com.example.core.database.data.CartItem
+import com.example.core.networking.remote.ProductDto
 import java.util.*
+import kotlin.math.round
 
 fun formatPrice(price: Double): String {
-    val rounded = kotlin.math.round(price).toInt()
+    val rounded = round(price).toInt()
     return "Rs. $rounded"
 }
 
 fun formatDecimalPrice(price: Double): String {
     return "Rs. ${String.format(Locale.US, "%.2f", price)}"
-}
-
-class JaggedEdgeShape(private val isTop: Boolean = false) : Shape {
-    override fun createOutline(size: Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density): Outline {
-        val path = Path().apply {
-            val step = with(density) { 5.dp.toPx() }
-            val halfStep = step / 2
-            
-            if (isTop) {
-                moveTo(0f, step)
-                var x = 0f
-                while (x < size.width) {
-                    lineTo(x + halfStep, 0f)
-                    lineTo(x + step, step)
-                    x += step
-                }
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
-                close()
-            } else {
-                moveTo(0f, 0f)
-                lineTo(size.width, 0f)
-                lineTo(size.width, size.height - step)
-                var x = size.width
-                while (x > 0) {
-                    lineTo(x - halfStep, size.height)
-                    lineTo(x - step, size.height - step)
-                    x -= step
-                }
-                lineTo(0f, size.height - step)
-                close()
-            }
-        }
-        return Outline.Generic(path)
-    }
 }
 
 @Composable
@@ -193,7 +163,7 @@ fun PasalHubAlertDialog(
     onConfirm: () -> Unit = onDismissRequest,
     dismissButtonText: String? = null,
     isDark: Boolean = true,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    icon: ImageVector? = null,
     iconColor: Color = Color(0xFF10B981)
 ) {
     val bgColor = if (isDark) Color(0xFF121212) else Color(0xFFFDFBF7)
@@ -283,9 +253,9 @@ fun PasalHubAuthDialog(
         label = "loading_scale"
     )
 
-    androidx.compose.ui.window.Dialog(
+    Dialog(
         onDismissRequest = onDismissRequest,
-        properties = androidx.compose.ui.window.DialogProperties(
+        properties = DialogProperties(
             usePlatformDefaultWidth = false
         )
     ) {
@@ -387,7 +357,7 @@ fun PasalHubAuthDialog(
 sealed class AuthDialogState(
     val title: String,
     val message: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: ImageVector,
     val color: Color
 ) {
     class Loading(action: String) : AuthDialogState(
@@ -402,12 +372,6 @@ sealed class AuthDialogState(
         icon = Icons.Default.CheckCircle,
         color = Color(0xFF10B981)
     )
-    class Greeting(name: String) : AuthDialogState(
-        title = "Welcome Back",
-        message = "Hello $name, we are making your application ready. Please wait...",
-        icon = Icons.Default.AutoAwesome,
-        color = Color(0xFF10B981)
-    )
     class Error(message: String) : AuthDialogState(
         title = "Authentication Failed",
         message = message,
@@ -416,22 +380,20 @@ sealed class AuthDialogState(
     )
 }
 
+@SuppressLint("FrequentlyChangingValue")
 @Composable
 fun OrderSummaryScreen(
     selectedItems: List<CartItem>,
     selectedPaymentMethod: String,
-    onPaymentMethodChange: (String) -> Unit,
-    selectedVoucher: Pair<String, Double>,
-    onVoucherChange: (Pair<String, Double>) -> Unit,
-    vouchers: List<Pair<String, Double>>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     currentUserAddress: String = "Default Address, New York",
-    isDark: Boolean = true
+    isDark: Boolean = true,
+    selectedVoucher: Pair<String, Double> = Pair("None", 0.0)
 ) {
     val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
     val discountAmount = if (itemsSubtotal > 0.0) {
-        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 300.0) {
+        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
             itemsSubtotal
         } else {
             selectedVoucher.second
@@ -476,7 +438,8 @@ fun OrderSummaryScreen(
     val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f)
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+
         color = bgColor
     ) {
         Column(
@@ -682,7 +645,7 @@ fun OrderSummaryScreen(
                         }
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             OutlinedButton(
@@ -755,21 +718,6 @@ private fun SectionHeader(title: String, badge: String) {
                 fontWeight = FontWeight.Black,
                 color = Color.Gray
             )
-        }
-    }
-}
-
-@Composable
-private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String, textColor: Color, textMuted: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(icon, contentDescription = null, tint = textMuted, modifier = Modifier.size(20.dp))
-        Column {
-            Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = textMuted)
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = textColor, lineHeight = 20.sp)
         }
     }
 }
@@ -848,7 +796,7 @@ fun parseItemsSummary(itemsSummary: String): List<ParsedOrderItem> {
         if (trimmed.isEmpty()) return@mapNotNull null
         
         val lastIndex = trimmed.lastIndexOf(" x")
-        val (title, qty) = if (lastIndex != -1) {
+        val (mainPart, qty) = if (lastIndex != -1) {
             val titlePart = trimmed.substring(0, lastIndex).trim()
             val qtyPart = trimmed.substring(lastIndex + 2).trim()
             Pair(titlePart, qtyPart.toIntOrNull() ?: 1)
@@ -856,11 +804,18 @@ fun parseItemsSummary(itemsSummary: String): List<ParsedOrderItem> {
             Pair(trimmed, 1)
         }
         
-        val (imageUrl, bgColor) = getProductVisualDetails(title)
+        val pipeIndex = mainPart.lastIndexOf("|")
+        val (title, imageUrlFromSummary) = if (pipeIndex != -1) {
+            Pair(mainPart.substring(0, pipeIndex).trim(), mainPart.substring(pipeIndex + 1).trim())
+        } else {
+            Pair(mainPart, null)
+        }
+        
+        val (defaultImageUrl, bgColor) = getProductVisualDetails(title)
         ParsedOrderItem(
             title = title,
             quantity = qty,
-            imageUrl = imageUrl,
+            imageUrl = imageUrlFromSummary ?: defaultImageUrl,
             bgColor = bgColor
         )
     }
@@ -869,8 +824,7 @@ fun parseItemsSummary(itemsSummary: String): List<ParsedOrderItem> {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BuyNowBottomSheet(
-    product: com.example.data.remote.ProductDto,
-    viewModel: com.example.ui.viewmodel.MainViewModel,
+    product: ProductDto,
     selectedVoucher: Pair<String, Double>,
     onVoucherChange: (Pair<String, Double>) -> Unit,
     selectedPaymentMethod: String,
@@ -879,12 +833,13 @@ fun BuyNowBottomSheet(
     onConfirmCheckout: () -> Unit,
     isDark: Boolean
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val vouchers = listOf(Pair("None", 0.0), Pair("PASALPREMIUM", 150.0), Pair("PASALSAVINGS", 300.0))
+    val vouchers = listOf(Pair("None", 0.0), Pair("PASALPREMIUM", 10.0), Pair("PASALSAVINGS", 30.0))
     var isVoucherExpanded by remember { mutableStateOf(false) }
 
     val subtotal = product.price
-    val discountAmount = if (selectedVoucher.first == "PASALSAVINGS" && subtotal < 300.0) subtotal else selectedVoucher.second
+    val discountAmount = if (selectedVoucher.first == "PASALSAVINGS" && subtotal < 30.0) subtotal else selectedVoucher.second
     val discountedSubtotal = (subtotal - discountAmount).coerceAtLeast(0.0)
     val taxAmount = discountedSubtotal * 0.05
     val finalTotal = discountedSubtotal + taxAmount
@@ -904,7 +859,7 @@ fun BuyNowBottomSheet(
         dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = bgColor
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).verticalScroll(rememberScrollState())) {
+        Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp).verticalScroll(rememberScrollState())) {
             Text(text = "Checkout Order", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
             Spacer(modifier = Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = cardColor), border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f))) {
@@ -982,7 +937,18 @@ fun BuyNowBottomSheet(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onConfirmCheckout, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFF4CAF50) else Color(0xFF0C1324), contentColor = Color.White)) {
+                Button(
+                    onClick = {
+                        if (NetworkUtils.isNetworkAvailable(context)) {
+                            onConfirmCheckout()
+                        } else {
+                            Toast.makeText(context, "No internet connection. Please check your network.", Toast.LENGTH_SHORT).show()
+                        }
+                    }, 
+                    modifier = Modifier.fillMaxWidth().height(54.dp), 
+                    shape = RoundedCornerShape(16.dp), 
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFF4CAF50) else Color(0xFF0C1324), contentColor = Color.White)
+                ) {
                     Text(text = "Place Order Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
@@ -996,19 +962,19 @@ data class ProductReview(val reviewer: String, val rating: Int, val date: String
 fun getMockReviewsForCategory(category: String): List<ProductReview> {
     return when (category.lowercase()) {
         "electronics" -> listOf(
-            ProductReview("Aarav Sharma", 5, "June 15, 2026", "Absolutely phenomenal build quality and speed!"),
-            ProductReview("Neha Patel", 4, "May 28, 2026", "Extremely powerful. Battery and screen are gorgeous."),
-            ProductReview("Kabir Singh", 5, "April 10, 2026", "The ultimate premium product. Fully worth the price.")
+            ProductReview("Jeevan Sharma", 5, "June 15, 2026", "Absolutely phenomenal build quality and speed!"),
+            ProductReview("Neha Karki", 4, "May 28, 2026", "Extremely powerful. Battery and screen are gorgeous."),
+            ProductReview("Kamal Thapa", 5, "April 10, 2026", "The ultimate premium product. Fully worth the price.")
         )
         "jewelery" -> listOf(
-            ProductReview("Priya Sen", 5, "June 20, 2026", "Stunningly brilliant sheen! Looks even more gorgeous in person."),
-            ProductReview("Ananya Roy", 5, "June 02, 2026", "Pure elegance. Pristine luxury packaging."),
-            ProductReview("Rohan Mehta", 4, "May 12, 2026", "Exceptional detail. A bit dainty but highly reflective.")
+            ProductReview("Priya Shrestha", 5, "June 20, 2026", "Stunningly brilliant sheen! Looks even more gorgeous in person."),
+            ProductReview("Sanjiv Basnet", 5, "June 02, 2026", "Pure elegance. Pristine luxury packaging."),
+            ProductReview("Mohan Khatiwada", 4, "May 12, 2026", "Exceptional detail. A bit dainty but highly reflective.")
         )
         else -> listOf(
-            ProductReview("Vikram Malhotra", 5, "June 18, 2026", "Superb fabric quality, feels incredibly luxurious."),
-            ProductReview("Meera Joshi", 4, "June 05, 2026", "Highly fashion-forward and premium material."),
-            ProductReview("Ishaan Gupta", 5, "May 24, 2026", "Extremely comfortable and stylish.")
+            ProductReview("Vikram Chaudhary", 5, "June 18, 2026", "Superb fabric quality, feels incredibly luxurious."),
+            ProductReview("Roshan Jairu", 4, "June 05, 2026", "Highly fashion-forward and premium material."),
+            ProductReview("Sanjay Gupta", 5, "May 24, 2026", "Extremely comfortable and stylish.")
         )
     }
 }

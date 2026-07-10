@@ -28,12 +28,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.core.database.data.CartItem
 import com.example.dashboard.cart.viewmodel.CartViewModel
-import com.example.ui.screens.*
+import com.example.core.application.utils.screens.OrderSummaryScreen
+import com.example.core.application.utils.screens.formatDecimalPrice
+import com.example.core.application.utils.screens.formatPrice
 
 @Composable
 fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -> Unit) {
@@ -43,7 +43,7 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
     val context = LocalContext.current
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
 
     // Set of selected item IDs. By default, all items are selected.
     var selectedItemIds by remember(cartItemsList) { 
@@ -53,8 +53,8 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
     // Voucher selection
     val vouchers = listOf(
         Pair("None", 0.0),
-        Pair("PASALPREMIUM", 150.0),
-        Pair("PASALSAVINGS", 300.0)
+        Pair("PASALPREMIUM", 10.0),
+        Pair("PASALSAVINGS", 30.0)
     )
     var selectedVoucher by remember { mutableStateOf(vouchers[0]) }
     var isVoucherExpanded by remember { mutableStateOf(false) }
@@ -243,17 +243,13 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
             }
             val addressText = currentUser?.address ?: "Default Address, New York"
             OrderSummaryScreen(
-                selectedItems,
-                selectedPaymentMethod,
-                { selectedPaymentMethod = it },
-                selectedVoucher,
-                { selectedVoucher = it },
-                vouchers,
-                { showCheckoutConfirmDialog = false },
-                {
+                selectedItems = selectedItems,
+                selectedPaymentMethod = selectedPaymentMethod,
+                onDismiss = { showCheckoutConfirmDialog = false },
+                onConfirm = {
                     val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
                     val discountAmount = if (itemsSubtotal > 0.0) {
-                        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 300.0) {
+                        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
                             itemsSubtotal
                         } else {
                             selectedVoucher.second
@@ -276,7 +272,8 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                     onOrderPlaced()
                 },
                 currentUserAddress = addressText,
-                isDark = isDark
+                isDark = isDark,
+                selectedVoucher = selectedVoucher
             )
         }
     }
@@ -345,7 +342,7 @@ fun CartSummaryCard(
 ) {
     val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
     val discountAmount = if (itemsSubtotal > 0.0) {
-        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 300.0) itemsSubtotal else selectedVoucher.second
+        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) itemsSubtotal else selectedVoucher.second
     } else 0.0
     val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
     val taxAmount = discountedSubtotal * 0.05
@@ -410,7 +407,11 @@ fun CartSummaryCard(
 
             SummaryRow("Subtotal", formatDecimalPrice(itemsSubtotal), mutedTextColor, textColor)
             SummaryRow("Tax (5%)", formatDecimalPrice(taxAmount), mutedTextColor, textColor)
-            if (discountAmount > 0.0) SummaryRow("Discount (${selectedVoucher.first})", "-${formatDecimalPrice(discountAmount)}", Color(0xFF4CAF50), Color(0xFF4CAF50))
+            if (discountAmount > 0.0) SummaryRow("Discount (${selectedVoucher.first})", "-${
+                formatDecimalPrice(
+                    discountAmount
+                )
+            }", Color(0xFF4CAF50), Color(0xFF4CAF50))
             HorizontalDivider(color = mutedTextColor.copy(alpha = 0.2f))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Total", color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)

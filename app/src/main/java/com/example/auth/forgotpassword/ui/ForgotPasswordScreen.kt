@@ -1,6 +1,5 @@
 package com.example.auth.forgotpassword.ui
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,11 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.auth.forgotpassword.viewmodel.ForgotPasswordViewModel
-import com.example.ui.screens.LoginTextField
-import com.example.ui.screens.PasalHubAlertDialog
+import com.example.core.application.utils.screens.LoginTextField
+import com.example.core.application.utils.screens.PasalHubAlertDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

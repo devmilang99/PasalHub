@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
 
 data class PasalHubDimens(
     val extraSmall: Dp = 4.dp,
@@ -23,11 +22,6 @@ data class PasalHubDimens(
 )
 
 val LocalDimens = compositionLocalOf { PasalHubDimens() }
-
-val MaterialThemeDimens: PasalHubDimens
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalDimens.current
 
 @Composable
 fun ProvideDimens(

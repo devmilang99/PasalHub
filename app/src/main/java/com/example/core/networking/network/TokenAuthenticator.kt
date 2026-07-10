@@ -1,4 +1,4 @@
-package com.example.data.network
+package com.example.core.networking.network
 
 import okhttp3.Authenticator
 import okhttp3.Request

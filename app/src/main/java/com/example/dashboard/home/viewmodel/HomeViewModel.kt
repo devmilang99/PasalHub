@@ -1,12 +1,11 @@
 package com.example.dashboard.home.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dashboard.home.domain.HomeRepository
 import com.example.core.database.data.UserEntity
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -81,13 +80,13 @@ class HomeViewModel(
         }
     }
 
-    fun toggleTheme(context: Context) {
+    fun toggleTheme() {
         viewModelScope.launch {
             repository.toggleTheme()
         }
     }
 
-    fun toggleFavorite(context: Context, productId: Int) {
+    fun toggleFavorite(productId: Int) {
         viewModelScope.launch {
             repository.toggleFavorite(productId)
         }

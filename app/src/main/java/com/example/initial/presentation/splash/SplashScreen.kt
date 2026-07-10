@@ -15,13 +15,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import com.example.R
+import com.example.core.application.utils.NetworkUtils
 import com.example.initial.presentation.InitialViewModel
 import kotlinx.coroutines.delay
 
@@ -30,12 +34,21 @@ fun SplashScreen(
     viewModel: InitialViewModel,
     onNavigateNext: () -> Unit
 ) {
+    val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
+    val isDark by viewModel.isDarkTheme.collectAsState()
     val fadeAnim = remember { Animatable(0f) }
     var isAutologinActive by remember { mutableStateOf(false) }
+    var showNoNetworkDialog by remember { mutableStateOf(false) }
+    var retryTrigger by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(currentUser) {
+    LaunchedEffect(currentUser, retryTrigger) {
         delay(500)
+        
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            showNoNetworkDialog = true
+            return@LaunchedEffect
+        }
         
         if (currentUser?.isRemembered == true) {
             isAutologinActive = true
@@ -51,16 +64,35 @@ fun SplashScreen(
         }
     }
 
+    if (showNoNetworkDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("No Internet Connection", fontWeight = FontWeight.Bold) },
+            text = { Text("Pasal Hub requires an active internet connection to provide you with the best experience. Please check your network settings and try again.") },
+            confirmButton = {
+                Button(onClick = { 
+                    if (NetworkUtils.isNetworkAvailable(context)) {
+                        showNoNetworkDialog = false
+                        retryTrigger++
+                    }
+                }) {
+                    Text("Retry")
+                }
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("splash_screen")
     ) {
         Image(
-            painter = painterResource(id = R.drawable.img_splash_bg),
+            painter = painterResource(id = if (isDark) R.drawable.image_bg_dark else R.drawable.image_bg_light),
             contentDescription = "Splash background image",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            alpha = 1f
         )
 
         Box(
@@ -68,10 +100,17 @@ fun SplashScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
-                        )
+                        colors = if (isDark) {
+                            listOf(
+                                Color.Black.copy(alpha = 0.4f),
+                                Color.Black.copy(alpha = 0.9f)
+                            )
+                        } else {
+                            listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.85f)
+                            )
+                        }
                     )
                 )
         )
@@ -86,6 +125,10 @@ fun SplashScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            val primaryTextColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF0C1324)
+            val secondaryTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+            val mutedTextColor = if (isDark) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
+
             if (isAutologinActive && currentUser != null) {
                 Spacer(modifier = Modifier.weight(1.2f))
                 
@@ -93,7 +136,7 @@ fun SplashScreen(
                     text = "Welcome back,",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Light,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = secondaryTextColor,
                     letterSpacing = 2.sp
                 )
                 
@@ -101,7 +144,7 @@ fun SplashScreen(
                     text = currentUser?.name?.uppercase() ?: "VALUED MEMBER",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = primaryTextColor,
                     letterSpacing = 4.sp,
                     fontFamily = FontFamily.SansSerif
                 )
@@ -109,7 +152,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.weight(1f))
                 
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = primaryTextColor,
                     strokeWidth = 3.dp,
                     modifier = Modifier.size(40.dp)
                 )
@@ -122,7 +165,7 @@ fun SplashScreen(
                     text = "PASAL HUB",
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = primaryTextColor,
                     letterSpacing = 8.sp,
                     fontFamily = FontFamily.SansSerif
                 )
@@ -131,7 +174,7 @@ fun SplashScreen(
                     text = "C U R A T E D",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                    color = if (isDark) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f),
                     letterSpacing = 8.sp,
                     fontFamily = FontFamily.SansSerif,
                     modifier = Modifier.padding(top = 4.dp)
@@ -140,7 +183,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = primaryTextColor,
                     strokeWidth = 3.dp,
                     modifier = Modifier
                         .size(40.dp)
@@ -154,7 +197,7 @@ fun SplashScreen(
                 text = "Premium E-Commerce Experience",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                color = mutedTextColor,
                 letterSpacing = 2.sp
             )
         }

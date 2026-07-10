@@ -22,6 +22,9 @@ class LoginViewModel(
             initialValue = null
         )
 
+    val isDarkTheme: StateFlow<Boolean> = repository.isDarkTheme()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun registerUser(
         context: Context,
         name: String,

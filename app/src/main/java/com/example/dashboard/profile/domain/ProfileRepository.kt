@@ -1,8 +1,8 @@
 package com.example.dashboard.profile.domain
 
 import com.example.core.database.data.UserEntity
-import com.example.data.remote.ProductDto
-import com.example.data.repository.Resource
+import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.products.repository.Resource
 import kotlinx.coroutines.flow.Flow
 
 interface ProfileRepository {

@@ -9,4 +9,5 @@ interface LoginRepository {
     fun isValidatedUser(email: String, pass: String): Boolean
     fun getLastEmail(): String
     fun saveLastEmail(email: String)
+    fun isDarkTheme(): Flow<Boolean>
 }

@@ -19,9 +19,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.window.core.layout.WindowWidthSizeClass
 import coil.compose.AsyncImage
-import com.example.data.remote.ProductDto
+import com.example.core.networking.remote.ProductDto
 import com.example.ai.presentation.AiSearchViewModel
 import com.example.core.application.presentation.AppViewModel
 import com.example.dashboard.cart.ui.CartScreen
@@ -32,9 +31,9 @@ import com.example.dashboard.order.ui.OrdersScreen
 import com.example.dashboard.order.viewmodel.OrderViewModel
 import com.example.dashboard.profile.ui.ProfileScreen
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
-import com.example.ui.screens.PasalHubAlertDialog
-import com.example.ui.screens.SuccessScreen
-import com.example.ui.viewmodel.MainViewModel
+import com.example.core.application.utils.screens.PasalHubAlertDialog
+import com.example.core.application.utils.screens.SuccessScreen
+import com.example.core.viewmodel.MainViewModel
 import com.example.ui.theme.LocalDimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,9 +61,9 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-    val isMedium = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val useNavRail = isExpanded || isMedium
+    val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
+    val isMedium = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(600) && !isExpanded
+    val useNavRail = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(600)
     val dimens = LocalDimens.current
 
     LaunchedEffect(Unit) {

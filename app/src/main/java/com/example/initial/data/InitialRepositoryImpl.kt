@@ -2,6 +2,7 @@ package com.example.initial.data
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.core.application.domain.AppPreferencesRepository
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
 import com.example.initial.domain.InitialRepository
@@ -9,17 +10,18 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 
 class InitialRepositoryImpl(
-    private val context: Context,
-    private val userDao: UserDao
+    context: Context,
+    private val userDao: UserDao,
+    private val appPrefs: AppPreferencesRepository
 ) : InitialRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
 
     private val _onboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", false))
-    private val _themeSet = MutableStateFlow(prefs.getBoolean("theme_set", false))
-    private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", true))
     
     private val _locationGranted = MutableStateFlow(prefs.getBoolean("perm_location", false))
     private val _cameraGranted = MutableStateFlow(prefs.getBoolean("perm_camera", false))
@@ -33,16 +35,11 @@ class InitialRepositoryImpl(
         _onboardingCompleted.value = true
     }
 
-    override fun isThemeSet(): Flow<Boolean> = _themeSet.asStateFlow()
-    override fun isDarkTheme(): Flow<Boolean> = _isDarkTheme.asStateFlow()
+    override fun isThemeSet(): Flow<Boolean> = appPrefs.isThemeSet()
+    override fun isDarkTheme(): Flow<Boolean> = appPrefs.isDarkTheme()
 
     override suspend fun setTheme(isDark: Boolean) {
-        prefs.edit {
-            putBoolean("dark_theme", isDark)
-            putBoolean("theme_set", true)
-        }
-        _isDarkTheme.value = isDark
-        _themeSet.value = true
+        appPrefs.setTheme(isDark)
     }
 
     override fun getLocationPermission(): Flow<Boolean> = _locationGranted.asStateFlow()
@@ -72,13 +69,13 @@ class InitialRepositoryImpl(
 
     override fun isFlowCompleted(): Flow<Boolean> = combine(
         _onboardingCompleted,
-        _themeSet,
+        appPrefs.isThemeSet(),
         _locationGranted,
         _cameraGranted,
         _storageGranted,
         _notificationGranted
     ) { values ->
-        values.all { it }
+        values.all { it as Boolean }
     }
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()

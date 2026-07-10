@@ -2,7 +2,6 @@ package com.example.auth.login.ui
 
 import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -33,9 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.BuildConfig
 import com.example.auth.login.viewmodel.LoginViewModel
-import com.example.ui.screens.AuthDialogState
-import com.example.ui.screens.LoginTextField
-import com.example.ui.screens.PasalHubAuthDialog
+import com.example.core.application.utils.screens.AuthDialogState
+import com.example.core.application.utils.screens.LoginTextField
+import com.example.core.application.utils.screens.PasalHubAuthDialog
 import com.example.ui.theme.LocalDimens
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -68,6 +67,7 @@ fun LoginScreen(
 
     val currentUser by viewModel.currentUser.collectAsState()
     val lastEmail by viewModel.lastEmail.collectAsState()
+    val isDark by viewModel.isDarkTheme.collectAsState()
 
     // Autofill email if not remembered
     LaunchedEffect(lastEmail) {
@@ -77,27 +77,12 @@ fun LoginScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Background Image with Premium Overlay
+        // Background Image with Theme-aware Selection
         Image(
-            painter = painterResource(id = R.drawable.img_splash_bg),
+            painter = painterResource(id = if (isDark) R.drawable.image_bg_dark else R.drawable.image_bg_light),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
-        )
-        
-        // Gradient Scrim for readability
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.3f),
-                            Color.Black.copy(alpha = 0.7f),
-                            Color.Black
-                        )
-                    )
-                )
         )
 
         Scaffold(
@@ -107,6 +92,8 @@ fun LoginScreen(
             containerColor = Color.Transparent
         ) { innerPadding ->
             val maxWidth = if (dimens.padding >= 24.dp) 480.dp else Dp.Unspecified
+            val primaryTextColor = if (isDark) Color.White else Color(0xFF0C1324)
+            val secondaryTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             
             Box(
                 modifier = Modifier
@@ -160,13 +147,13 @@ fun LoginScreen(
                         text = "Welcome Back",
                         style = if (dimens.padding > 24.dp) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = primaryTextColor
                     )
 
                     Text(
                         text = "Sign in to access your curated collection",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = secondaryTextColor,
                         textAlign = TextAlign.Center
                     )
 
@@ -182,6 +169,7 @@ fun LoginScreen(
                             onValueChange = { email = it },
                             label = "Email Address",
                             leadingIcon = Icons.Default.Email,
+                            isDark = isDark,
                             keyboardType = KeyboardType.Email,
                             testTag = "login_email_input"
                         )
@@ -191,6 +179,7 @@ fun LoginScreen(
                             onValueChange = { password = it },
                             label = "Password",
                             leadingIcon = Icons.Default.Lock,
+                            isDark = isDark,
                             keyboardType = KeyboardType.Password,
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
@@ -198,7 +187,7 @@ fun LoginScreen(
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                         contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.7f)
+                                        tint = secondaryTextColor
                                     )
                                 }
                             },
@@ -218,14 +207,14 @@ fun LoginScreen(
                                     checked = rememberMe,
                                     onCheckedChange = { rememberMe = it },
                                     colors = CheckboxDefaults.colors(
-                                        uncheckedColor = Color.White.copy(alpha = 0.6f),
+                                        uncheckedColor = secondaryTextColor.copy(alpha = 0.6f),
                                         checkedColor = MaterialTheme.colorScheme.primary
                                     )
                                 )
                                 Text(
                                     text = "Keep me signed in",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = secondaryTextColor
                                 )
                             }
 
@@ -303,18 +292,18 @@ fun LoginScreen(
                     ) {
                         HorizontalDivider(
                             modifier = Modifier.weight(1f),
-                            color = Color.White.copy(alpha = 0.2f)
+                            color = secondaryTextColor.copy(alpha = 0.2f)
                         )
                         Text(
                             text = "OR CONTINUE WITH",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = secondaryTextColor.copy(alpha = 0.5f),
                             modifier = Modifier.padding(horizontal = dimens.medium),
                             letterSpacing = 2.sp
                         )
                         HorizontalDivider(
                             modifier = Modifier.weight(1f),
-                            color = Color.White.copy(alpha = 0.2f)
+                            color = secondaryTextColor.copy(alpha = 0.2f)
                         )
                     }
 
@@ -426,19 +415,19 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(dimens.buttonHeight),
                         shape = RoundedCornerShape(dimens.cardCorner),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, secondaryTextColor.copy(alpha = 0.2f))
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.AccountCircle,
                                 contentDescription = null,
-                                tint = Color.White
+                                tint = primaryTextColor
                             )
                             Spacer(modifier = Modifier.width(dimens.small))
                             Text(
                                 text = "Sign in with Google",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White,
+                                color = primaryTextColor,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -451,7 +440,7 @@ fun LoginScreen(
                         Text(
                             text = "New to Pasal Hub? ",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = secondaryTextColor
                         )
                         Text(
                             text = "Create Account",
@@ -473,7 +462,7 @@ fun LoginScreen(
                         authDialogState = null
                     },
                     state = state,
-                    isDark = true
+                    isDark = isDark
                 )
             }
         }
