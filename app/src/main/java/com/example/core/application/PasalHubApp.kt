@@ -1,14 +1,18 @@
 package com.example.core.application
 
 import android.app.Application
-import com.example.initial.di.AppContainer
-import com.example.initial.di.AppContainerImpl
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
-class PasalHubApp : Application() {
-    lateinit var container: AppContainer
+@HiltAndroidApp
+class PasalHubApp : Application(), Configuration.Provider {
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
 
-    override fun onCreate() {
-        super.onCreate()
-        container = AppContainerImpl(this)
-    }
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 }

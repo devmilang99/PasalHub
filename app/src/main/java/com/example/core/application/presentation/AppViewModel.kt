@@ -3,12 +3,15 @@ package com.example.core.application.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.application.domain.AppPreferencesRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AppViewModel(
+@HiltViewModel
+class AppViewModel @Inject constructor(
     private val repository: AppPreferencesRepository
 ) : ViewModel() {
 

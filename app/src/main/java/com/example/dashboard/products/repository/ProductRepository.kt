@@ -1,5 +1,7 @@
 package com.example.dashboard.products.repository
 
+import android.content.Context
+import androidx.work.*
 import com.example.core.database.data.CartDao
 import com.example.core.database.data.CartItem
 import com.example.core.database.data.OrderDao
@@ -8,8 +10,12 @@ import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
 import com.example.core.networking.remote.FakeStoreApi
 import com.example.core.networking.remote.ProductDto
+import com.example.dashboard.order.worker.OrderTrackingWorker
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
 sealed interface Resource<out T> {
     object Loading : Resource<Nothing>
@@ -17,11 +23,13 @@ sealed interface Resource<out T> {
     data class Error(val message: String) : Resource<Nothing>
 }
 
-class ProductRepository(
+@Singleton
+class ProductRepository @Inject constructor(
     private val api: FakeStoreApi,
     private val userDao: UserDao,
     private val cartDao: CartDao,
-    private val orderDao: OrderDao
+    private val orderDao: OrderDao,
+    @ApplicationContext private val context: Context
 ) {
     fun getProducts(): Flow<Resource<List<ProductDto>>> = flow {
         emit(Resource.Loading)
@@ -73,9 +81,28 @@ class ProductRepository(
     // Order operations
     fun getOrders(): Flow<List<OrderEntity>> = orderDao.getOrders()
 
-    suspend fun placeOrder(order: OrderEntity) {
-        orderDao.insertOrder(order)
+    suspend fun placeOrder(order: OrderEntity): Int {
+        val id = orderDao.insertOrder(order)
         cartDao.clearCart()
+        return id.toInt()
+    }
+
+    fun scheduleOrderTracking(orderId: Int) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val trackingRequest = OneTimeWorkRequestBuilder<OrderTrackingWorker>()
+            .setConstraints(constraints)
+            .setInputData(workDataOf("order_id" to orderId))
+            .addTag("order_tracking_$orderId")
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "order_tracking_$orderId",
+            ExistingWorkPolicy.REPLACE,
+            trackingRequest
+        )
     }
 
     suspend fun updateOrder(order: OrderEntity) {

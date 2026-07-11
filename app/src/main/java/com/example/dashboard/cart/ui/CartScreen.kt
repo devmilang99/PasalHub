@@ -29,9 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import coil.compose.AsyncImage
+import com.example.core.application.utils.screens.OrderReviewScreen
 import com.example.core.database.data.CartItem
 import com.example.dashboard.cart.viewmodel.CartViewModel
-import com.example.core.application.utils.screens.OrderSummaryScreen
 import com.example.core.application.utils.screens.formatDecimalPrice
 import com.example.core.application.utils.screens.formatPrice
 
@@ -242,7 +242,7 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                 cartItemsList.filter { selectedItemIds.contains(it.productId) }
             }
             val addressText = currentUser?.address ?: "Default Address, New York"
-            OrderSummaryScreen(
+            OrderReviewScreen(
                 selectedItems = selectedItems,
                 selectedPaymentMethod = selectedPaymentMethod,
                 onDismiss = { showCheckoutConfirmDialog = false },

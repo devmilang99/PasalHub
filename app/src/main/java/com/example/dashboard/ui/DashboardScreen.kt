@@ -48,9 +48,14 @@ fun DashboardScreen(
     profileViewModel: ProfileViewModel,
     onLogout: () -> Unit,
     onAiSearchClick: () -> Unit = {},
-    onProductClick: (ProductDto) -> Unit
+    onProductClick: (ProductDto) -> Unit,
+    initialTab: Int = 0
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Home, 1: Cart, 2: Order, 3: Profile
+    var selectedTab by remember { mutableIntStateOf(initialTab) } // 0: Home, 1: Cart, 2: Order, 3: Profile
+
+    LaunchedEffect(initialTab) {
+        selectedTab = initialTab
+    }
     val cartItems by cartViewModel.cartItems.collectAsState()
     val cartItemCount = cartItems.size
     val isDark by viewModel.isDarkTheme.collectAsState()

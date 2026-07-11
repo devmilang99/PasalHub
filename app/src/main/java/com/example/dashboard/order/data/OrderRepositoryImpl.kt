@@ -5,12 +5,17 @@ import com.example.core.application.domain.AppPreferencesRepository
 import com.example.dashboard.order.domain.OrderRepository
 import com.example.core.database.data.OrderDao
 import com.example.core.database.data.OrderEntity
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-class OrderRepositoryImpl(
+import androidx.work.*
+import com.example.dashboard.order.worker.OrderTrackingWorker
+import javax.inject.Inject
+
+class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val appPrefs: AppPreferencesRepository
 ) : OrderRepository {
 
@@ -44,7 +49,26 @@ class OrderRepositoryImpl(
         }
     }
 
-    override suspend fun placeOrder(order: OrderEntity) {
-        orderDao.insertOrder(order)
+    override suspend fun placeOrder(order: OrderEntity): Int {
+        val id = orderDao.insertOrder(order)
+        return id.toInt()
+    }
+
+    override fun scheduleOrderTracking(orderId: Int) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val trackingRequest = OneTimeWorkRequestBuilder<OrderTrackingWorker>()
+            .setConstraints(constraints)
+            .setInputData(workDataOf("order_id" to orderId))
+            .addTag("order_tracking_$orderId")
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "order_tracking_$orderId",
+            ExistingWorkPolicy.REPLACE,
+            trackingRequest
+        )
     }
 }

@@ -42,7 +42,7 @@ interface OrderDao {
     fun getOrders(): Flow<List<OrderEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrder(order: OrderEntity)
+    suspend fun insertOrder(order: OrderEntity): Long
 
     @Update
     suspend fun updateOrder(order: OrderEntity)

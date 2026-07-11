@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -671,7 +672,7 @@ fun AiResultProductCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (dimens.padding > 24.dp) 160.dp else 145.dp)
+            .height(if (dimens.padding > 24.dp) 180.dp else 165.dp)
             .clip(RoundedCornerShape(dimens.cardCorner))
             .clickable { onProductClick() },
         shape = RoundedCornerShape(dimens.cardCorner),
@@ -739,13 +740,42 @@ fun AiResultProductCard(
                     text = product.title,
                     style = if (dimens.padding > 24.dp) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = if (dimens.padding > 24.dp) 22.sp else 18.sp
                 )
+
+                Text(
+                    text = product.description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 14.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
                 
                 Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Storefront,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Eco Store Official",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

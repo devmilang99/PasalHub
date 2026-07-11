@@ -4,12 +4,14 @@ import android.content.Context
 import com.example.auth.register.domain.RegisterRepository
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import javax.inject.Inject
 
-class RegisterRepositoryImpl(
+class RegisterRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) : RegisterRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)

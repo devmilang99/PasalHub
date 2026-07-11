@@ -8,12 +8,14 @@ import com.example.core.database.data.UserEntity
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.products.repository.ProductRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
+import javax.inject.Inject
 
-class ProfileRepositoryImpl(
+class ProfileRepositoryImpl @Inject constructor(
     private val productRepository: ProductRepository,
     private val userDao: UserDao,
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val appPrefs: AppPreferencesRepository
 ) : ProfileRepository {
 

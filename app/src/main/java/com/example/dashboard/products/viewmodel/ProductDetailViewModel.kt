@@ -8,6 +8,7 @@ import com.example.core.database.data.CartItem
 import com.example.core.database.data.OrderEntity
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.ProductRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,8 +16,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
+import javax.inject.Inject
 
-class ProductDetailViewModel(
+@HiltViewModel
+class ProductDetailViewModel @Inject constructor(
     private val repository: ProductRepository,
     private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
@@ -98,7 +101,8 @@ class ProductDetailViewModel(
                 seller = "${product.category.replaceFirstChar { it.uppercase() }} Luxury Direct",
                 date = System.currentTimeMillis()
             )
-            repository.placeOrder(order)
+            val orderId = repository.placeOrder(order)
+            repository.scheduleOrderTracking(orderId)
 
             // Rewards simulation
             val email = user?.email ?: "guest"

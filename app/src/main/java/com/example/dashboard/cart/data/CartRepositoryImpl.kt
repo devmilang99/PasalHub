@@ -4,16 +4,18 @@ import android.content.Context
 import com.example.dashboard.cart.domain.CartRepository
 import com.example.core.database.data.*
 import com.example.dashboard.products.repository.ProductRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-class CartRepositoryImpl(
+class CartRepositoryImpl @Inject constructor(
     private val productRepository: ProductRepository,
     private val userDao: UserDao,
     private val cartDao: CartDao,
     private val orderDao: OrderDao,
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) : CartRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -60,7 +62,9 @@ class CartRepositoryImpl(
                 seller = "Pasal Hub",
                 date = System.currentTimeMillis()
             )
-            orderDao.insertOrder(order)
+            val orderId = orderDao.insertOrder(order).toInt()
+            productRepository.scheduleOrderTracking(orderId)
+
             selectedItems.forEach { cartDao.deleteCartItem(it) }
             
             // Note: points logic could also be here or in VM

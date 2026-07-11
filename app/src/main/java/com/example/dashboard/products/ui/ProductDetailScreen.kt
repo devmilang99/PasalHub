@@ -33,7 +33,7 @@ import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.viewmodel.ProductDetailViewModel
 import com.example.dashboard.products.repository.Resource
 import com.example.core.application.utils.screens.BuyNowBottomSheet
-import com.example.core.application.utils.screens.OrderSummaryScreen
+import com.example.core.application.utils.screens.OrderReviewScreen
 import com.example.core.application.utils.screens.ProductReview
 import com.example.core.application.utils.screens.formatPrice
 import com.example.core.application.utils.screens.getMockReviewsForCategory
@@ -278,7 +278,7 @@ fun ProductDetailScreen(
                 )
             }
             val addressText = currentUser?.address ?: "Default Address, New York"
-            OrderSummaryScreen(
+            OrderReviewScreen(
                 selectedItems = listOf(tempCartItem),
                 selectedPaymentMethod = buyNowPaymentMethod,
                 onDismiss = { showBuyNowReceipt = false },

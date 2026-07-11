@@ -8,12 +8,15 @@ import com.example.core.database.data.UserEntity
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.products.repository.ProductRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import javax.inject.Inject
 
-class MainViewModel(
+@HiltViewModel
+class MainViewModel @Inject constructor(
     private val repository: ProductRepository,
     private val appPrefs: AppPreferencesRepository,
 ) : ViewModel() {

@@ -29,7 +29,6 @@ import com.example.dashboard.home.viewmodel.HomeViewModel
 import com.example.dashboard.order.viewmodel.OrderViewModel
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
 import com.example.dashboard.products.repository.Resource
-import com.example.initial.di.AppContainer
 import com.example.dashboard.ui.DashboardScreen
 import com.example.initial.presentation.InitialViewModel
 import com.example.initial.presentation.splash.SplashScreen
@@ -43,74 +42,10 @@ import com.example.core.application.presentation.AppViewModel
 import com.example.dashboard.products.ui.ProductDetailScreen
 import com.example.dashboard.products.viewmodel.ProductDetailViewModel
 
-class ViewModelFactory(
-    private val container: AppContainer
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return when {
-            modelClass.isAssignableFrom(MainViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                MainViewModel(
-                    container.productRepository,
-                    container.appPreferencesRepository
-                ) as T
-            }
-            modelClass.isAssignableFrom(AiSearchViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                AiSearchViewModel(container.productRepository, container.geminiSearchRouter) as T
-            }
-            modelClass.isAssignableFrom(LoginViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                LoginViewModel(container.loginRepository) as T
-            }
-            modelClass.isAssignableFrom(RegisterViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                RegisterViewModel(container.registerRepository) as T
-            }
-            modelClass.isAssignableFrom(ForgotPasswordViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                ForgotPasswordViewModel(container.forgotPasswordRepository) as T
-            }
-            modelClass.isAssignableFrom(HomeViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                HomeViewModel(container.homeRepository) as T
-            }
-            modelClass.isAssignableFrom(OrderViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                OrderViewModel(
-                    container.orderRepository,
-                    container.appPreferencesRepository,
-                    container.notificationHelper
-                ) as T
-            }
-            modelClass.isAssignableFrom(CartViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                CartViewModel(container.cartRepository) as T
-            }
-            modelClass.isAssignableFrom(ProfileViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                ProfileViewModel(container.profileRepository) as T
-            }
-            modelClass.isAssignableFrom(InitialViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                InitialViewModel(container.initialRepository) as T
-            }
-            modelClass.isAssignableFrom(ProductDetailViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                ProductDetailViewModel(
-                    container.productRepository,
-                    container.appPreferencesRepository
-                ) as T
-            }
-            modelClass.isAssignableFrom(AppViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                AppViewModel(container.appPreferencesRepository) as T
-            }
-            else -> throw IllegalArgumentException("Unknown ViewModel class")
-        }
-    }
-}
+import androidx.hilt.navigation.compose.hiltViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -118,13 +53,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val appContainer = (application as PasalHubApp).container
-        val factory = ViewModelFactory(appContainer)
-        
         // These ViewModels are shared or used for app-level state
-        val mainViewModel: MainViewModel by viewModels { factory }
-        val appViewModel: AppViewModel by viewModels { factory }
-        val initialViewModel: InitialViewModel by viewModels { factory }
+        val mainViewModel: MainViewModel by viewModels()
+        val appViewModel: AppViewModel by viewModels()
+        val initialViewModel: InitialViewModel by viewModels()
 
         setContent {
             val isDarkTheme by appViewModel.isDarkTheme.collectAsState()
@@ -162,7 +94,7 @@ class MainActivity : ComponentActivity() {
                                         val currentUser = initialViewModel.currentUser.value
 
                                         if (currentUser?.isRemembered == true) {
-                                            navController.navigate("dashboard") {
+                                            navController.navigate("dashboard?startTab=0") {
                                                 popUpTo("splash") { inclusive = true }
                                             }
                                         } else if (isFlowCompleted) {
@@ -220,14 +152,14 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("login") {
-                                val loginViewModel: LoginViewModel = viewModel(factory = factory)
+                                val loginViewModel: LoginViewModel = hiltViewModel()
                                 com.example.auth.login.ui.LoginScreen(
                                     viewModel = loginViewModel,
                                     onNavigateToRegister = {
                                         navController.navigate("register")
                                     },
                                     onNavigateToDashboard = {
-                                        navController.navigate("dashboard") {
+                                        navController.navigate("dashboard?startTab=0") {
                                             popUpTo("login") { inclusive = true }
                                         }
                                     },
@@ -238,7 +170,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("forgot_password") {
-                                val forgotPasswordViewModel: ForgotPasswordViewModel = viewModel(factory = factory)
+                                val forgotPasswordViewModel: ForgotPasswordViewModel = hiltViewModel()
                                 com.example.auth.forgotpassword.ui.ForgotPasswordScreen(
                                     viewModel = forgotPasswordViewModel,
                                     onNavigateBack = {
@@ -248,14 +180,14 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("register") {
-                                val registerViewModel: RegisterViewModel = viewModel(factory = factory)
+                                val registerViewModel: RegisterViewModel = hiltViewModel()
                                 com.example.auth.register.ui.RegisterScreen(
                                     viewModel = registerViewModel,
                                     onNavigateBackToLogin = {
                                         navController.popBackStack()
                                     },
                                     onNavigateToDashboard = {
-                                        navController.navigate("dashboard") {
+                                        navController.navigate("dashboard?startTab=0") {
                                             popUpTo("login") { inclusive = true }
                                         }
                                     }
@@ -263,7 +195,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("ai_search") {
-                                val aiSearchViewModel: AiSearchViewModel = viewModel(factory = factory)
+                                val aiSearchViewModel: AiSearchViewModel = hiltViewModel()
                                 AISearchScreen(
                                     viewModel = mainViewModel,
                                     aiViewModel = aiSearchViewModel,
@@ -276,12 +208,13 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable("dashboard") {
-                                val aiSearchViewModel: AiSearchViewModel = viewModel(factory = factory)
-                                val homeViewModel: HomeViewModel = viewModel(factory = factory)
-                                val orderViewModel: OrderViewModel = viewModel(factory = factory)
-                                val cartViewModel: CartViewModel = viewModel(factory = factory)
-                                val profileViewModel: ProfileViewModel = viewModel(factory = factory)
+                            composable("dashboard?startTab={startTab}") { backStackEntry ->
+                                val startTab = backStackEntry.arguments?.getString("startTab")?.toIntOrNull() ?: 0
+                                val aiSearchViewModel: AiSearchViewModel = hiltViewModel()
+                                val homeViewModel: HomeViewModel = hiltViewModel()
+                                val orderViewModel: OrderViewModel = hiltViewModel()
+                                val cartViewModel: CartViewModel = hiltViewModel()
+                                val profileViewModel: ProfileViewModel = hiltViewModel()
                                 DashboardScreen(
                                     viewModel = mainViewModel,
                                     appViewModel = appViewModel,
@@ -293,7 +226,7 @@ class MainActivity : ComponentActivity() {
                                     onLogout = {
                                         mainViewModel.logout(context)
                                         navController.navigate("login") {
-                                            popUpTo("dashboard") { inclusive = true }
+                                            popUpTo(0) { inclusive = true }
                                         }
                                     },
                                     onAiSearchClick = {
@@ -301,7 +234,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onProductClick = { product ->
                                         navController.navigate("product_detail/${product.id}")
-                                    }
+                                    },
+                                    initialTab = startTab
                                 )
                             }
 
@@ -315,7 +249,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (product != null) {
-                                    val productDetailViewModel: ProductDetailViewModel = viewModel(factory = factory)
+                                    val productDetailViewModel: ProductDetailViewModel = hiltViewModel()
                                     ProductDetailScreen(
                                         product = product,
                                         viewModel = mainViewModel,
@@ -325,8 +259,8 @@ class MainActivity : ComponentActivity() {
                                             navController.navigate("product_detail/${newProduct.id}")
                                         },
                                         onOrderPlaced = {
-                                            navController.navigate("dashboard") {
-                                                popUpTo("dashboard") { inclusive = false }
+                                            navController.navigate("dashboard?startTab=2") {
+                                                popUpTo("dashboard?startTab=0") { inclusive = true }
                                             }
                                         }
                                     )

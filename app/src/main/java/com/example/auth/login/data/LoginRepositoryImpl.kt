@@ -6,11 +6,13 @@ import com.example.auth.login.domain.LoginRepository
 import com.example.core.application.domain.AppPreferencesRepository
 import com.example.core.database.data.UserDao
 import com.example.core.database.data.UserEntity
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class LoginRepositoryImpl(
+class LoginRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val appPrefs: AppPreferencesRepository
 ) : LoginRepository {
     

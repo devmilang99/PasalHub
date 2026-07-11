@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -168,18 +169,20 @@ fun HomeScreen(
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = if (isDark) Color(0xFF121212) else Color(0xFFFDFBF7),
-            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Gray.copy(alpha = 0.5f)) },
-            shape = RoundedCornerShape(topStart = dimens.large, topEnd = dimens.large)
+            containerColor = if (isDark) Color(0xFF0F0F10) else Color(0xFFF9FAFB),
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Gray.copy(alpha = 0.3f)) },
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            tonalElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = dimens.large)
-                    .padding(bottom = 40.dp)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
                     .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(dimens.large)
+                verticalArrangement = Arrangement.spacedBy(28.dp)
             ) {
+                // Header with Premium Reset
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -188,8 +191,9 @@ fun HomeScreen(
                     Text(
                         "Filter & Sort",
                         fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDark) Color.White else Color(0xFF0C1324)
+                        fontWeight = FontWeight.Black,
+                        color = if (isDark) Color.White else Color(0xFF0F172A),
+                        letterSpacing = (-0.5).sp
                     )
                     TextButton(
                         onClick = {
@@ -200,118 +204,97 @@ fun HomeScreen(
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF10B981))
                     ) {
-                        Text("Reset All", fontWeight = FontWeight.Bold)
+                        Text("Reset All", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                     }
                 }
 
-                // Category Section
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "CATEGORY",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Gray,
-                        letterSpacing = 1.5.sp
-                    )
+                // Elegant Category Section
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    SectionLabel("CATEGORY")
                     val categoriesList = listOf("all", "electronics", "fashion", "jewelery", "home")
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(end = 16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(end = 24.dp)
                     ) {
                         items(categoriesList) { cat ->
                             val isSelected = filterCategory == cat
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { filterCategory = cat },
-                                label = {
-                                    Text(
-                                        cat.replaceFirstChar { it.uppercase() },
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = if (isDark) Color(0xFF1E1E1E) else Color(0xFFE2E4E9),
-                                    labelColor = Color.Gray,
-                                    selectedContainerColor = Color(0xFF10B981).copy(alpha = 0.15f),
-                                    selectedLabelColor = Color(0xFF10B981)
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = isSelected,
-                                    borderColor = Color.Gray.copy(alpha = 0.2f),
-                                    selectedBorderColor = Color(0xFF10B981)
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable { filterCategory = cat },
+                                color = if (isSelected) Color(0xFF10B981) else (if (isDark) Color(0xFF1A1A1C) else Color(0xFFE2E8F0)),
+                                border = if (!isSelected) BorderStroke(1.dp, Color.Gray.copy(alpha = 0.1f)) else null
+                            ) {
+                                Text(
+                                    cat.replaceFirstChar { it.uppercase() },
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (isSelected) Color.White else (if (isDark) Color.Gray else Color(0xFF64748B))
                                 )
-                            )
+                            }
                         }
                     }
                 }
 
-                // Price Range Section
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // High-End Price Range Section
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "PRICE RANGE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.Gray,
-                            letterSpacing = 1.5.sp
-                        )
+                        SectionLabel("PRICE RANGE")
                         Text(
                             text = if (filterMaxPrice >= 500f) "Any Price" else "Up to Rs. ${filterMaxPrice.toInt()}",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 15.sp,
                             color = Color(0xFF10B981)
                         )
                     }
-                    Slider(
-                        value = filterMaxPrice,
-                        onValueChange = { filterMaxPrice = it },
-                        valueRange = 10f..500f,
-                        steps = 49,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF10B981),
-                            activeTrackColor = Color(0xFF10B981),
-                            inactiveTrackColor = if (isDark) Color(0xFF252528) else Color(0xFFE9ECEF)
+                    
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                        Slider(
+                            value = filterMaxPrice,
+                            onValueChange = { filterMaxPrice = it },
+                            valueRange = 10f..500f,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color(0xFF10B981),
+                                inactiveTrackColor = if (isDark) Color(0xFF252528) else Color(0xFFE2E8F0),
+                                activeTickColor = Color.Transparent,
+                                inactiveTickColor = Color.Transparent
+                            )
                         )
-                    )
+                    }
+                    
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Rs. 10", fontSize = 11.sp, color = Color.Gray)
-                        Text("Rs. 500+", fontSize = 11.sp, color = Color.Gray)
+                        Text("Rs. 10", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.DarkGray else Color.LightGray)
+                        Text("Rs. 500+", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.DarkGray else Color.LightGray)
                     }
                 }
 
-                // Seller Location Hub
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "SELLER LOCATION",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Gray,
-                        letterSpacing = 1.5.sp
-                    )
+                // Premium Seller Location Hub
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    SectionLabel("SELLER LOCATION")
                     val locationFilters = listOf("All Locations", "Online Only", "Physical Stores")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         locationFilters.forEach { loc ->
                             val isSelected = filterLocation == loc
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(44.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(16.dp))
                                     .clickable { filterLocation = loc },
-                                color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.15f) else (if (isDark) Color(0xFF1E1E1E) else Color(0xFFE2E4E9)),
+                                color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.12f) else (if (isDark) Color(0xFF1A1A1C) else Color(0xFFE2E8F0)),
                                 border = BorderStroke(
                                     width = 1.dp,
                                     color = if (isSelected) Color(0xFF10B981) else Color.Transparent
@@ -321,8 +304,8 @@ fun HomeScreen(
                                     Text(
                                         loc,
                                         fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color(0xFF10B981) else Color.White
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (isSelected) Color(0xFF10B981) else (if (isDark) Color.Gray else Color(0xFF64748B))
                                     )
                                 }
                             }
@@ -330,45 +313,52 @@ fun HomeScreen(
                     }
                 }
 
-                // Sort By Section
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "SORT BY",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Gray,
-                        letterSpacing = 1.5.sp
+                // Modern Sort By Section
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    SectionLabel("SORT BY")
+                    val sortOptions = listOf(
+                        Triple("Relevance", Icons.Default.Sort, "Relevance"),
+                        Triple("Price: Low to High", Icons.Default.TrendingUp, "Price: Low to High"),
+                        Triple("Price: High to Low", Icons.Default.TrendingDown, "Price: High to Low")
                     )
-                    val sortOptions = listOf("Relevance", "Price: Low to High", "Price: High to Low")
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        sortOptions.forEach { opt ->
-                            val isSelected = filterSortBy == opt
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        sortOptions.forEach { (label, icon, value) ->
+                            val isSelected = filterSortBy == value
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { filterSortBy = opt },
-                                color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.15f) else (if (isDark) Color(0xFF1E1E1E) else Color(0xFFE2E4E9)),
+                                    .height(54.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .clickable { filterSortBy = value },
+                                color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.08f) else (if (isDark) Color(0xFF1A1A1C) else Color(0xFFF1F5F9)),
                                 border = BorderStroke(
                                     width = 1.dp,
-                                    color = if (isSelected) Color(0xFF10B981) else Color.Transparent
+                                    color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.5f) else Color.Transparent
                                 )
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    modifier = Modifier.padding(horizontal = 20.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        opt,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color(0xFF10B981) else (if (isDark) Color.White else Color(0xFF0C1324))
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = if (isSelected) Color(0xFF10B981) else Color.Gray,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Text(
+                                            label,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                            color = if (isSelected) Color(0xFF10B981) else (if (isDark) Color.White else Color(0xFF0F172A))
+                                        )
+                                    }
                                     if (isSelected) {
                                         Icon(
-                                            Icons.Default.Check,
+                                            Icons.Default.CheckCircle,
                                             contentDescription = null,
                                             tint = Color(0xFF10B981),
                                             modifier = Modifier.size(20.dp)
@@ -389,11 +379,15 @@ fun HomeScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                        .height(60.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDark) Color.White else Color(0xFF0F172A),
+                        contentColor = if (isDark) Color.Black else Color.White
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
-                    Text("Apply Changes", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                    Text("APPLY FILTERS", fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
                 }
             }
         }
@@ -796,6 +790,17 @@ fun HomeScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Black,
+        color = Color.Gray,
+        letterSpacing = 1.5.sp
+    )
 }
 
 @Composable

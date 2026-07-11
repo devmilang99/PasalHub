@@ -7,10 +7,13 @@ import com.example.ai.domain.model.SearchIntent
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.products.repository.ProductRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AiSearchViewModel(
+@HiltViewModel
+class AiSearchViewModel @Inject constructor(
     private val repository: ProductRepository,
     private val geminiRouter: GeminiSearchRouter
 ) : ViewModel() {

@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.dashboard.cart.domain.CartRepository
 import com.example.core.database.data.CartItem
 import com.example.core.database.data.UserEntity
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class CartViewModel(
+@HiltViewModel
+class CartViewModel @Inject constructor(
     private val repository: CartRepository
 ) : ViewModel() {
 

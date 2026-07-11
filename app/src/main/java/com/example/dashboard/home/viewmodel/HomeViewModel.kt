@@ -6,10 +6,13 @@ import com.example.dashboard.home.domain.HomeRepository
 import com.example.core.database.data.UserEntity
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.Resource
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val repository: HomeRepository
 ) : ViewModel() {
 

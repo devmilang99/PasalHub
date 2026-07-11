@@ -3,13 +3,17 @@ package com.example.core.application.data
 import android.content.Context
 import androidx.core.content.edit
 import com.example.core.application.domain.AppPreferencesRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
 
-class AppPreferencesRepositoryImpl(private val context: Context) : AppPreferencesRepository {
+class AppPreferencesRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : AppPreferencesRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
     
