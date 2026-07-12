@@ -1,55 +1,55 @@
 package com.example.core.application.utils.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-
-data class ReviewMock(
-    val id: Int,
-    val productName: String,
-    val productImage: String,
-    val rating: Int,
-    val comment: String,
-    val date: String
-)
-
-val mockReviews = listOf(
-    ReviewMock(1, "Fjallraven - Foldsack No. 1 Backpack", "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg", 5, "Amazing build quality. Perfect for my laptop and daily commute.", "20 Oct 2023"),
-    ReviewMock(2, "Mens Casual Premium Slim Fit T-Shirts", "https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_.jpg", 4, "Great fit, but the color is slightly different from the photos.", "15 Oct 2023"),
-    ReviewMock(3, "SanDisk SSD PLUS 1TB Internal SSD", "https://fakestoreapi.com/img/61U7T1koQqL._AC_SX679_.jpg", 5, "Blazing fast speeds! My laptop feels like new again.", "02 Oct 2023"),
-    ReviewMock(4, "White Gold Plated Princess", "https://fakestoreapi.com/img/71YAIFU48IL._AC_UL640_QL65_ML3_.jpg", 3, "It's beautiful but smaller than I expected.", "28 Sep 2023")
-)
+import coil.request.ImageRequest
+import com.example.dashboard.order.viewmodel.OrderViewModel
+import com.example.core.database.data.OrderEntity
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyReviewsScreen(
-    onBack: () -> Unit,
-    isDark: Boolean
+    viewModel: OrderViewModel,
+    onBack: () -> Unit
 ) {
-    val bgColor = if (isDark) Color(0xFF0F0F10) else Color(0xFFF8F9FA)
-    val textColor = if (isDark) Color.White else Color(0xFF212529)
+    val orders by viewModel.ordersState.collectAsState()
+    val reviewedOrders = remember(orders) {
+        orders.filter { it.status == "Completed" && it.rating > 0 }
+    }
+    
+    val bgColor = MaterialTheme.colorScheme.background
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val sdf = remember { SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault()) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("My Reviews", fontWeight = FontWeight.Bold) },
+                title = { Text("My Reviews", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -57,29 +57,29 @@ fun MyReviewsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = bgColor,
-                    scrolledContainerColor = Color.Unspecified,
-                    navigationIconContentColor = textColor,
                     titleContentColor = textColor,
-                    actionIconContentColor = Color.Unspecified
-                )
+                    navigationIconContentColor = textColor
+                ),
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         },
-        containerColor = bgColor
+        containerColor = bgColor,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        if (mockReviews.isEmpty()) {
+        if (reviewedOrders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Text("You haven't posted any reviews yet.", color = Color.Gray)
+                Text("You haven't posted any reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(top = paddingValues.calculateTopPadding()),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(mockReviews) { review ->
-                    ReviewItemCard(review = review, isDark = isDark)
+                items(reviewedOrders, key = { it.orderId }) { order ->
+                    ReviewItemCard(order = order, sdf = sdf)
                 }
             }
         }
@@ -87,82 +87,171 @@ fun MyReviewsScreen(
 }
 
 @Composable
-fun ReviewItemCard(review: ReviewMock, isDark: Boolean) {
-    val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
-    val textColor = if (isDark) Color.White else Color(0xFF212529)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF6C757D)
-    val accentColor = MaterialTheme.colorScheme.primary
+fun ReviewItemCard(order: OrderEntity, sdf: SimpleDateFormat) {
+    val cardColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val mutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = Color(0xFF4CAF50)
+    val context = LocalContext.current
+    
+    val parsedItems = remember(order.itemsSummary) { parseItemsSummary(order.itemsSummary) }
+    val isGridView = parsedItems.size > 2
+    val formattedDate = remember(order.date) { sdf.format(Date(order.date)) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White
-                ) {
-                    AsyncImage(
-                        model = review.productImage,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().padding(4.dp),
-                        contentScale = ContentScale.Fit
-                    )
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Header Info
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(text = "#ORD-${1000 + order.orderId}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
+                    Text(text = formattedDate, fontSize = 12.sp, color = mutedTextColor)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = order.address.ifEmpty { "Location not set" }.split(",").first().trim(),
+                            fontSize = 12.sp,
+                            color = mutedTextColor
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = review.productName,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = review.date,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = mutedTextColor
-                    )
-                }
-                IconButton(onClick = { /* Edit Review */ }) {
-                    Icon(Icons.Rounded.Edit, contentDescription = "Edit", tint = accentColor, modifier = Modifier.size(18.dp))
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${order.rating}.0",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = textColor,modifier = Modifier.padding(end = 15.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(accentColor.copy(alpha = 0.1f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(text = "REVIEWED", color = accentColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                repeat(5) { index ->
-                    Icon(
-                        imageVector = if (index < review.rating) Icons.Rounded.Star else Icons.Rounded.Star,
-                        contentDescription = null,
-                        tint = if (index < review.rating) Color(0xFFFFD700) else Color.Gray.copy(alpha = 0.3f),
-                        modifier = Modifier.size(18.dp)
-                    )
+            // Grid or List view of items
+            if (isGridView) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    parsedItems.chunked(3).forEach { rowItems ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowItems.forEach { item ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(item.bgColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(item.imageUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                            // Fill empty slots in row if necessary
+                            if (rowItems.size < 3) {
+                                repeat(3 - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${review.rating}.0",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
+            } else {
+                parsedItems.forEach { item ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(item.bgColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(item.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = item.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Storefront, contentDescription = null, tint = mutedTextColor, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = order.seller, fontSize = 12.sp, color = mutedTextColor)
+                            }
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = review.comment,
-                style = MaterialTheme.typography.bodyMedium,
-                color = textColor.copy(alpha = 0.8f),
-                lineHeight = 20.sp
-            )
+            // Rating and Review Comment
+            if (!order.review.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Your Review",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = mutedTextColor,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = order.review,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor.copy(alpha = 0.8f),
+                            lineHeight = 20.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
     }
 }

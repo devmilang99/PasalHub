@@ -1,12 +1,11 @@
 package com.example.dashboard.cart.data
 
-import android.content.Context
+import com.example.core.application.domain.AppPreferencesRepository
 import com.example.dashboard.cart.domain.CartRepository
 import com.example.core.database.data.*
 import com.example.dashboard.products.repository.ProductRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -15,18 +14,14 @@ class CartRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val cartDao: CartDao,
     private val orderDao: OrderDao,
-    @ApplicationContext private val context: Context
+    private val appPrefs: AppPreferencesRepository
 ) : CartRepository {
-
-    private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
 
     override fun getCartItems(): Flow<List<CartItem>> = cartDao.getCartItems()
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()
 
-    override fun isDarkTheme(): Flow<Boolean> {
-        return MutableStateFlow(prefs.getBoolean("dark_theme", true))
-    }
+    override fun isDarkTheme(): Flow<Boolean> = appPrefs.isDarkTheme()
 
     override suspend fun increaseQuantity(item: CartItem) {
         cartDao.updateCartItem(item.copy(quantity = item.quantity + 1))

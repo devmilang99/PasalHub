@@ -16,10 +16,15 @@ class AppPreferencesRepositoryImpl @Inject constructor(
 ) : AppPreferencesRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
+    private val favPrefs = context.getSharedPreferences("pasalhub_favorites", Context.MODE_PRIVATE)
     
     private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", true))
     private val _isThemeSet = MutableStateFlow(prefs.getBoolean("theme_set", false))
     private val _notificationEvent = MutableSharedFlow<String>()
+
+    private val _favoriteIds = MutableStateFlow(
+        favPrefs.getStringSet("fav_set", emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    )
 
     override fun isDarkTheme(): Flow<Boolean> = _isDarkTheme.asStateFlow()
 
@@ -43,5 +48,20 @@ class AppPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun emitNotification(message: String) {
         _notificationEvent.emit(message)
+    }
+
+    override fun getFavoriteIds(): Flow<Set<Int>> = _favoriteIds.asStateFlow()
+
+    override suspend fun toggleFavorite(productId: Int) {
+        val current = _favoriteIds.value.toMutableSet()
+        if (current.contains(productId)) {
+            current.remove(productId)
+        } else {
+            current.add(productId)
+        }
+        favPrefs.edit {
+            putStringSet("fav_set", current.map { it.toString() }.toSet())
+        }
+        _favoriteIds.value = current
     }
 }

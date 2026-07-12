@@ -12,4 +12,7 @@ interface OrderRepository {
     suspend fun completeOrder(orderId: Int, rating: Int, review: String)
     suspend fun placeOrder(order: OrderEntity): Int
     fun scheduleOrderTracking(orderId: Int)
+    suspend fun setOrderPause(orderId: Int, isPaused: Boolean)
+    suspend fun toggleOrderPause(orderId: Int)
+    suspend fun resumeAllPausedOrders()
 }

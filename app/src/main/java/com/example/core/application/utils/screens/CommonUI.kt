@@ -59,15 +59,11 @@ fun formatDecimalPrice(price: Double): String {
 @Composable
 fun SuccessScreen(
     message: String,
-    onContinue: () -> Unit,
-    isDark: Boolean = true
+    onContinue: () -> Unit
 ) {
-    val bgColor = if (isDark) Color(0xFF000000) else Color(0xFFFDFBF7)
-    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
-    
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = bgColor
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
@@ -100,7 +96,7 @@ fun SuccessScreen(
                     text = "Order Confirmed!",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
-                    color = textColor,
+                    color = Color.Gray,
                     letterSpacing = 0.5.sp,
                     textAlign = TextAlign.Center
                 )
@@ -145,17 +141,13 @@ fun PasalHubAlertDialog(
     confirmButtonText: String = "OK",
     onConfirm: () -> Unit = onDismissRequest,
     dismissButtonText: String? = null,
-    isDark: Boolean = true,
-    icon: ImageVector? = null,
-    iconColor: Color = Color(0xFF10B981)
+    icon: ImageVector? = null
 ) {
-    val bgColor = if (isDark) Color(0xFF121212) else Color(0xFFFDFBF7)
-    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
-    val textMuted = if (isDark) Color.Gray else Color(0xFF64748B)
+    val iconColor = MaterialTheme.colorScheme.primary
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        containerColor = bgColor,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp),
         icon = icon?.let {
             {
@@ -175,7 +167,7 @@ fun PasalHubAlertDialog(
                 text = title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black,
-                color = textColor,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -184,7 +176,7 @@ fun PasalHubAlertDialog(
             Text(
                 text = text,
                 fontSize = 15.sp,
-                color = textMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
                 lineHeight = 22.sp
@@ -197,7 +189,10 @@ fun PasalHubAlertDialog(
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color.White else Color(0xFF0C1324), contentColor = if (isDark) Color.Black else Color.White)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Text(confirmButtonText, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
             }
@@ -208,7 +203,7 @@ fun PasalHubAlertDialog(
                     onClick = onDismissRequest,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(it, color = textMuted, fontWeight = FontWeight.Bold)
+                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -218,13 +213,8 @@ fun PasalHubAlertDialog(
 @Composable
 fun PasalHubAuthDialog(
     onDismissRequest: () -> Unit,
-    state: AuthDialogState,
-    isDark: Boolean = true
+    state: AuthDialogState
 ) {
-    val bgColor = if (isDark) Color(0xFF121212) else Color(0xFFFDFBF7)
-    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
-    val textMuted = if (isDark) Color.Gray else Color(0xFF64748B)
-
     val infiniteTransition = rememberInfiniteTransition(label = "auth_loading")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -255,9 +245,8 @@ fun PasalHubAuthDialog(
                     .fillMaxWidth(0.85f)
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(32.dp),
-                color = bgColor,
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -298,14 +287,14 @@ fun PasalHubAuthDialog(
                         text = state.title,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
-                        color = textColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
                     Text(
                         text = state.message,
                         fontSize = 15.sp,
-                        color = textMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         lineHeight = 22.sp
                     )
@@ -318,8 +307,8 @@ fun PasalHubAuthDialog(
                                 .height(54.dp),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (state is AuthDialogState.Success) state.color else textColor,
-                                contentColor = if (state is AuthDialogState.Success) Color.White else bgColor
+                                containerColor = if (state is AuthDialogState.Success) state.color else MaterialTheme.colorScheme.primary,
+                                contentColor = if (state is AuthDialogState.Success) Color.White else MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Text(
@@ -398,7 +387,8 @@ data class ParsedOrderItem(
     val title: String,
     val quantity: Int,
     val imageUrl: String,
-    val bgColor: Color
+    val bgColor: Color,
+    val seller: String = "Official Store"
 )
 
 fun getProductVisualDetails(title: String): Pair<String, Color> {
@@ -492,7 +482,8 @@ fun BuyNowBottomSheet(
     onPaymentMethodChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirmCheckout: () -> Unit,
-    isDark: Boolean
+    isDark: Boolean,
+    address: String = "Default Address, New York"
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -523,7 +514,12 @@ fun BuyNowBottomSheet(
         Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp).verticalScroll(rememberScrollState())) {
             Text(text = "Checkout Order", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
             Spacer(modifier = Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = cardColor), border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f))) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(20.dp)).background(if (isDark) Color(0xFF2D2D30) else Color.White).padding(8.dp), contentAlignment = Alignment.Center) {
                         AsyncImage(model = product.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -577,6 +573,14 @@ fun BuyNowBottomSheet(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Delivery Location", color = mutedTextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = address, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(text = "Subtotal", color = mutedTextColor, fontSize = 14.sp)
                         Text(text = formatPrice(subtotal), color = textColor, fontSize = 14.sp)

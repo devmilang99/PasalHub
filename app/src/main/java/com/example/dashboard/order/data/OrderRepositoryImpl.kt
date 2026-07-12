@@ -40,6 +40,8 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun cancelOrder(orderId: Int, reason: String) {
         orderDao.getOrders().first().find { it.orderId == orderId }?.let { order ->
             orderDao.updateOrder(order.copy(status = "Cancelled", cancelledReason = reason))
+            // Cancel any active tracking work
+            WorkManager.getInstance(context).cancelUniqueWork("order_tracking_$orderId")
         }
     }
 
@@ -54,13 +56,27 @@ class OrderRepositoryImpl @Inject constructor(
         return id.toInt()
     }
 
-    override fun scheduleOrderTracking(orderId: Int) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    override suspend fun setOrderPause(orderId: Int, isPaused: Boolean) {
+        orderDao.getOrders().first().find { it.orderId == orderId }?.let { order ->
+            orderDao.updateOrder(order.copy(isPaused = isPaused))
+        }
+    }
 
+    override suspend fun toggleOrderPause(orderId: Int) {
+        orderDao.getOrders().first().find { it.orderId == orderId }?.let { order ->
+            orderDao.updateOrder(order.copy(isPaused = !order.isPaused))
+        }
+    }
+
+    override suspend fun resumeAllPausedOrders() {
+        val allOrders = orderDao.getOrders().first()
+        allOrders.filter { it.isPaused }.forEach { order ->
+            orderDao.updateOrder(order.copy(isPaused = false))
+        }
+    }
+
+    override fun scheduleOrderTracking(orderId: Int) {
         val trackingRequest = OneTimeWorkRequestBuilder<OrderTrackingWorker>()
-            .setConstraints(constraints)
             .setInputData(workDataOf("order_id" to orderId))
             .addTag("order_tracking_$orderId")
             .build()

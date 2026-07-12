@@ -283,7 +283,7 @@ fun ForgotPasswordScreen(
                     title = "Invalid Email",
                     text = message,
                     icon = Icons.Default.ErrorOutline,
-                    isDark = true
+
                 )
             }
         }

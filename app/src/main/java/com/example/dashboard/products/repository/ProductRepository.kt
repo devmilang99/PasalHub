@@ -13,6 +13,7 @@ import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.order.worker.OrderTrackingWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,6 +75,12 @@ class ProductRepository @Inject constructor(
 
     suspend fun addToCart(item: CartItem) = cartDao.addToCart(item)
 
+    suspend fun removeFromCart(productId: Int) {
+        cartDao.getCartItems().first().find { it.productId == productId }?.let {
+            cartDao.deleteCartItem(it)
+        }
+    }
+
     suspend fun updateCartItem(item: CartItem) = cartDao.updateCartItem(item)
 
     suspend fun clearCart() = cartDao.clearCart()
@@ -88,12 +95,7 @@ class ProductRepository @Inject constructor(
     }
 
     fun scheduleOrderTracking(orderId: Int) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
         val trackingRequest = OneTimeWorkRequestBuilder<OrderTrackingWorker>()
-            .setConstraints(constraints)
             .setInputData(workDataOf("order_id" to orderId))
             .addTag("order_tracking_$orderId")
             .build()

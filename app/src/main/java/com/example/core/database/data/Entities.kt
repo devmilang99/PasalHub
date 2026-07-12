@@ -22,7 +22,8 @@ data class CartItem(
     val description: String,
     val category: String,
     val image: String,
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    val seller: String = "Official Store"
 )
 
 @Entity(tableName = "orders")
@@ -39,5 +40,6 @@ data class OrderEntity(
     val cancelledReason: String? = null,
     val rating: Int = 0,
     val review: String? = null,
-    val progress: Int = 0
+    val progress: Int = 0,
+    val isPaused: Boolean = false
 )

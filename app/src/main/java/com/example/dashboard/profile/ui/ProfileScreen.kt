@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.Resource
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
+import com.example.dashboard.order.viewmodel.OrderViewModel
 import com.example.core.application.utils.screens.MyReviewsScreen
 import com.example.core.application.utils.screens.PasalHubAlertDialog
 import com.example.core.application.utils.screens.formatPrice
@@ -47,6 +48,7 @@ import com.example.ui.theme.LocalDimens
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    orderViewModel: OrderViewModel,
     onLogout: () -> Unit,
     onProductClick: (ProductDto) -> Unit
 ) {
@@ -87,18 +89,18 @@ fun ProfileScreen(
 
     if (showReviewsScreen) {
         MyReviewsScreen(
-            onBack = { showReviewsScreen = false },
-            isDark = isDark
+            viewModel = orderViewModel,
+            onBack = { showReviewsScreen = false }
         )
         return
     }
 
-    val bgColor = if (isDark) Color(0xFF0F0F10) else Color(0xFFF8F9FA)
-    val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
+    val bgColor = MaterialTheme.colorScheme.background
+    val cardColor = MaterialTheme.colorScheme.surface
     val accentColor = MaterialTheme.colorScheme.primary
-    val textColor = if (isDark) Color.White else Color(0xFF212529)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF6C757D)
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val mutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     Column(
         modifier = Modifier
@@ -342,7 +344,6 @@ fun ProfileScreen(
             text = "Are you sure you want to exit your session?",
             confirmButtonText = "Sign Out",
             onConfirm = { onLogout() },
-            isDark = isDark,
             icon = Icons.AutoMirrored.Filled.Logout
         )
     }
@@ -621,9 +622,8 @@ fun StatCard(
             .height(110.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        border = BorderStroke(1.dp, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(12.dp),
@@ -668,9 +668,8 @@ fun PremiumMenuCard(isDark: Boolean, content: @Composable ColumnScope.() -> Unit
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        border = BorderStroke(1.dp, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             content()
@@ -742,10 +741,10 @@ fun FavoriteListItem(
     onRemove: () -> Unit,
     isDark: Boolean
 ) {
-    val textColor = if (isDark) Color.White else Color(0xFF212529)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF6C757D)
-    val itemColor = if (isDark) Color(0xFF252528) else Color(0xFFF1F3F5)
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val mutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val itemColor = MaterialTheme.colorScheme.surfaceVariant
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     Card(
         modifier = Modifier

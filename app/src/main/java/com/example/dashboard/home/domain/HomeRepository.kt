@@ -15,4 +15,6 @@ interface HomeRepository {
     fun getFavoriteIds(): Flow<Set<Int>>
     suspend fun toggleFavorite(productId: Int)
     suspend fun addToCart(product: ProductDto)
+    suspend fun removeFromCart(productId: Int)
+    fun getCartItems(): Flow<List<com.example.core.database.data.CartItem>>
 }

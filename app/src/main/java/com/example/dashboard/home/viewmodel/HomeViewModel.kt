@@ -19,6 +19,15 @@ class HomeViewModel @Inject constructor(
     private val _selectedCategory = MutableStateFlow("all")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
+    private val _maxPrice = MutableStateFlow(500f)
+    val maxPrice: StateFlow<Float> = _maxPrice.asStateFlow()
+
+    private val _sellerLocation = MutableStateFlow("All Locations")
+    val sellerLocation: StateFlow<String> = _sellerLocation.asStateFlow()
+
+    private val _sortBy = MutableStateFlow("Relevance")
+    val sortBy: StateFlow<String> = _sortBy.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -33,37 +42,83 @@ class HomeViewModel @Inject constructor(
     val favoriteIds: StateFlow<Set<Int>> = repository.getFavoriteIds()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
+    val cartItemIds: StateFlow<Set<Int>> = repository.getCartItems()
+        .map { items -> items.map { it.productId }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    private val _snackbarMessage = MutableSharedFlow<String>()
+    val snackbarMessage = _snackbarMessage.asSharedFlow()
+
+    val isFilterActive: StateFlow<Boolean> = combine(
+        _selectedCategory, _maxPrice, _sellerLocation, _sortBy
+    ) { category, price, location, sort ->
+        category != "all" || price < 500f || location != "All Locations" || sort != "Relevance"
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val homeProductsState: StateFlow<Resource<List<ProductDto>>> = combine(
-        _selectedCategory,
-        _searchQuery,
+        combine(_selectedCategory, _searchQuery, _maxPrice, _sellerLocation, _sortBy) { c, q, p, l, s -> 
+            Filters(c, q, p, l, s)
+        },
         _refreshTrigger
-    ) { category, query, _ ->
-        Pair(category, query)
-    }.flatMapLatest { (category, query) ->
-        val flow = if (category == "all") {
+    ) { filters, _ ->
+        val productsFlow = if (filters.category == "all") {
             repository.getProducts()
         } else {
-            repository.getProductsByCategory(category)
+            repository.getProductsByCategory(filters.category)
         }
         
-        flow.map { resource ->
+        productsFlow.map { resource ->
             when (resource) {
                 is Resource.Loading -> Resource.Loading
                 is Resource.Error -> Resource.Error(resource.message)
                 is Resource.Success -> {
-                    val filtered = resource.data.filter {
-                        it.title.contains(query, ignoreCase = true) ||
-                                it.description.contains(query, ignoreCase = true)
+                    var filtered = resource.data.filter {
+                        it.title.contains(filters.query, ignoreCase = true) ||
+                                it.description.contains(filters.query, ignoreCase = true)
                     }
+                    
+                    // Filter by price
+                    filtered = filtered.filter { it.price <= filters.maxPrice }
+                    
+                    // Sort
+                    filtered = when (filters.sort) {
+                        "Price: Low to High" -> filtered.sortedBy { it.price }
+                        "Price: High to Low" -> filtered.sortedByDescending { it.price }
+                        else -> filtered
+                    }
+                    
                     Resource.Success(filtered)
                 }
             }
         }
-    }.stateIn(
+    }.flatMapLatest { it }
+    .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = Resource.Loading
     )
+
+    private data class Filters(
+        val category: String,
+        val query: String,
+        val maxPrice: Float,
+        val location: String,
+        val sort: String
+    )
+
+    fun setFilters(category: String, maxPrice: Float, location: String, sort: String) {
+        _selectedCategory.value = category
+        _maxPrice.value = maxPrice
+        _sellerLocation.value = location
+        _sortBy.value = sort
+    }
+
+    fun resetFilters() {
+        _selectedCategory.value = "all"
+        _maxPrice.value = 500f
+        _sellerLocation.value = "All Locations"
+        _sortBy.value = "Relevance"
+    }
 
     fun setCategory(category: String) {
         _selectedCategory.value = category
@@ -97,7 +152,12 @@ class HomeViewModel @Inject constructor(
 
     fun addToCart(product: ProductDto) {
         viewModelScope.launch {
-            repository.addToCart(product)
+            if (cartItemIds.value.contains(product.id)) {
+                repository.removeFromCart(product.id)
+                _snackbarMessage.emit("${product.title} removed from cart")
+            } else {
+                repository.addToCart(product)
+            }
         }
     }
 }

@@ -9,13 +9,10 @@ import com.example.core.database.data.OrderEntity
 import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import androidx.core.content.edit
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,11 +21,10 @@ class ProductDetailViewModel @Inject constructor(
     private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
 
-    private val _favoriteIds = MutableStateFlow<Set<Int>>(emptySet())
-    val favoriteIds: StateFlow<Set<Int>> = _favoriteIds.asStateFlow()
+    private val _isDarkTheme = appPrefs.isDarkTheme()
+    val isDarkTheme: Flow<Boolean> = _isDarkTheme
 
-    private val _isDarkTheme = MutableStateFlow(true)
-    val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
+    val favoriteIds: Flow<Set<Int>> = appPrefs.getFavoriteIds()
 
     // Flow for notifications triggered from this screen
     val notificationEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
@@ -42,26 +38,17 @@ class ProductDetailViewModel @Inject constructor(
     }
 
     fun loadSettings(context: Context) {
-        val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
-        _isDarkTheme.value = prefs.getBoolean("dark_theme", true)
+        // Handled by appPrefs flow
     }
 
     fun loadFavorites(context: Context) {
-        val prefs = context.getSharedPreferences("pasalhub_favorites", Context.MODE_PRIVATE)
-        val favStrings = prefs.getStringSet("fav_set", emptySet()) ?: emptySet()
-        _favoriteIds.value = favStrings.mapNotNull { it.toIntOrNull() }.toSet()
+        // Handled by appPrefs flow
     }
 
     fun toggleFavorite(context: Context, productId: Int) {
-        val prefs = context.getSharedPreferences("pasalhub_favorites", Context.MODE_PRIVATE)
-        val current = _favoriteIds.value.toMutableSet()
-        if (current.contains(productId)) {
-            current.remove(productId)
-        } else {
-            current.add(productId)
+        viewModelScope.launch {
+            appPrefs.toggleFavorite(productId)
         }
-        _favoriteIds.value = current
-        prefs.edit { putStringSet("fav_set", current.map { it.toString() }.toSet()) }
     }
 
     fun addToCart(product: ProductDto) {
@@ -71,6 +58,12 @@ class ProductDetailViewModel @Inject constructor(
             if (existing != null) {
                 repository.updateCartItem(existing.copy(quantity = existing.quantity + 1))
             } else {
+                val sellerName = when(product.category.lowercase()) {
+                    "electronics" -> "Tech Gear Hub"
+                    "jewelery" -> "Elegance Gems"
+                    "men's clothing", "women's clothing", "clothing" -> "Fashion Central"
+                    else -> "${product.category.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }} Boutique"
+                }
                 repository.addToCart(
                     CartItem(
                         productId = product.id,
@@ -79,7 +72,8 @@ class ProductDetailViewModel @Inject constructor(
                         description = product.description,
                         category = product.category,
                         image = product.image,
-                        quantity = 1
+                        quantity = 1,
+                        seller = sellerName
                     )
                 )
             }
@@ -103,6 +97,7 @@ class ProductDetailViewModel @Inject constructor(
             )
             val orderId = repository.placeOrder(order)
             repository.scheduleOrderTracking(orderId)
+            appPrefs.emitNotification("Order placed successfully!")
 
             // Rewards simulation
             val email = user?.email ?: "guest"

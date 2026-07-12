@@ -770,7 +770,7 @@ fun AiResultProductCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Eco Store Official",
+                        text = "Official Store",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         fontWeight = FontWeight.Medium

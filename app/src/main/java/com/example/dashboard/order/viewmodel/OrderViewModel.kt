@@ -26,7 +26,7 @@ class OrderViewModel @Inject constructor(
         // Resume simulation for any transitional orders
         viewModelScope.launch {
             repository.getOrders().first().forEach { order ->
-                if (order.status in listOf("Placed", "Packaging", "Sent for Delivery")) {
+                if (order.status in listOf("Placing", "Placed", "Packaging", "Sent for Delivery")) {
                     repository.scheduleOrderTracking(order.orderId)
                 }
             }
@@ -45,7 +45,9 @@ class OrderViewModel @Inject constructor(
     fun placeOrder(order: OrderEntity) {
         viewModelScope.launch {
             val orderId = repository.placeOrder(order)
-            appPrefs.emitNotification("Your order #ORD-${1000 + orderId} has been placed successfully!")
+            if (order.status != "Placing") {
+                appPrefs.emitNotification("Your order #ORD-${1000 + orderId} has been placed successfully!")
+            }
             if (order.status in listOf("Placed", "Packaging", "Sent for Delivery", "Placing")) {
                 repository.scheduleOrderTracking(orderId)
             }
@@ -58,9 +60,21 @@ class OrderViewModel @Inject constructor(
         }
     }
 
+    fun setOrderPause(orderId: Int, isPaused: Boolean) {
+        viewModelScope.launch {
+            repository.setOrderPause(orderId, isPaused)
+        }
+    }
+
     fun completeOrder(orderId: Int, rating: Int, review: String) {
         viewModelScope.launch {
             repository.completeOrder(orderId, rating, review)
+        }
+    }
+
+    fun emitNotification(message: String) {
+        viewModelScope.launch {
+            appPrefs.emitNotification(message)
         }
     }
 }

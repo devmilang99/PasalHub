@@ -10,7 +10,7 @@ import com.example.BuildConfig
         CartItem::class,
         OrderEntity::class
     ],
-    version = 4,
+    version = BuildConfig.DATABASE_VERSION,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

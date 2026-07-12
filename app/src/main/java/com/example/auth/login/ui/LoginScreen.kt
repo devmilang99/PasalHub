@@ -92,77 +92,86 @@ fun LoginScreen(
             containerColor = Color.Transparent
         ) { innerPadding ->
             val maxWidth = if (dimens.padding >= 24.dp) 480.dp else Dp.Unspecified
-            val primaryTextColor = if (isDark) Color.White else Color(0xFF0C1324)
-            val secondaryTextColor = if (isDark) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+            val primaryTextColor = MaterialTheme.colorScheme.onBackground
+            val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .imePadding(),
                 contentAlignment = Alignment.Center
             ) {
+                val screenHeight = maxHeight
                 Column(
                     modifier = Modifier
-                        .widthIn(max = maxWidth)
-                        .fillMaxWidth()
-                        .padding(horizontal = dimens.padding)
+                        .fillMaxSize()
                         .verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(modifier = Modifier.height(dimens.large))
-
-                    // Branding Section
-                    Surface(
+                    Column(
                         modifier = Modifier
-                            .size(dimens.logoSize)
-                            .clip(CircleShape),
-                        color = MaterialTheme.colorScheme.primary,
-                        tonalElevation = 8.dp
+                            .widthIn(max = maxWidth)
+                            .fillMaxWidth()
+                            .heightIn(min = screenHeight)
+                            .padding(horizontal = dimens.padding),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = null,
-                                modifier = Modifier.size(dimens.logoSize * 0.6f),
-                                tint = MaterialTheme.colorScheme.onPrimary
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Branding Section
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(dimens.small)
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .size(dimens.logoSize)
+                                    .clip(CircleShape),
+                                color = MaterialTheme.colorScheme.primary,
+                                tonalElevation = 8.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingBag,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(dimens.logoSize * 0.6f),
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "PASAL HUB",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = 4.sp,
+                                fontWeight = FontWeight.Bold
                             )
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Welcome Back",
+                                    style = if (dimens.padding > 24.dp) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = primaryTextColor
+                                )
+
+                                Text(
+                                    text = "Sign in to access your curated collection",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = secondaryTextColor,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(dimens.small))
-
-                    Text(
-                        text = "PASAL HUB",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 4.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(dimens.extraSmall))
-
-                    Text(
-                        text = "Welcome Back",
-                        style = if (dimens.padding > 24.dp) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = primaryTextColor
-                    )
-
-                    Text(
-                        text = "Sign in to access your curated collection",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = secondaryTextColor,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(dimens.medium))
+                        Spacer(modifier = Modifier.weight(1f))
 
                     // Core Form
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(dimens.small)
+                        verticalArrangement = Arrangement.spacedBy(dimens.medium)
                     ) {
                         LoginTextField(
                             value = email,
@@ -228,7 +237,7 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(dimens.medium))
+                    Spacer(modifier = Modifier.height(dimens.large))
 
                     // Login Button
                     Button(
@@ -283,7 +292,7 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(dimens.medium))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Divider
                     Row(
@@ -433,7 +442,7 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(dimens.medium))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Footer
                     Row(modifier = Modifier.padding(bottom = dimens.medium)) {
@@ -450,6 +459,7 @@ fun LoginScreen(
                             modifier = Modifier.clickable { onNavigateToRegister() }
                         )
                     }
+                    }
                 }
             }
 
@@ -462,7 +472,7 @@ fun LoginScreen(
                         authDialogState = null
                     },
                     state = state,
-                    isDark = isDark
+
                 )
             }
         }

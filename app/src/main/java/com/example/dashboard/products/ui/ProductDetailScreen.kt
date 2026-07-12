@@ -1,5 +1,6 @@
 package com.example.dashboard.products.ui
 
+import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,7 +34,6 @@ import com.example.core.networking.remote.ProductDto
 import com.example.dashboard.products.viewmodel.ProductDetailViewModel
 import com.example.dashboard.products.repository.Resource
 import com.example.core.application.utils.screens.BuyNowBottomSheet
-import com.example.core.application.utils.screens.OrderReviewScreen
 import com.example.core.application.utils.screens.ProductReview
 import com.example.core.application.utils.screens.formatPrice
 import com.example.core.application.utils.screens.getMockReviewsForCategory
@@ -53,14 +53,13 @@ fun ProductDetailScreen(
     val context = LocalContext.current
     val reviews = remember(product) { getMockReviewsForCategory(product.category) }
     var showBuyNowSheet by remember { mutableStateOf(false) }
-    var showBuyNowReceipt by remember { mutableStateOf(false) }
     var buyNowVoucher by remember { mutableStateOf(Pair("None", 0.0)) }
     var buyNowPaymentMethod by remember { mutableStateOf("E-sewa") }
     
-    val favoriteIds by detailViewModel.favoriteIds.collectAsState()
+    val favoriteIds by detailViewModel.favoriteIds.collectAsState(initial = emptySet())
     val isFavorited = favoriteIds.contains(product.id)
     val currentUser by viewModel.currentUser.collectAsState()
-    val isDark by detailViewModel.isDarkTheme.collectAsState()
+    val isDark by detailViewModel.isDarkTheme.collectAsState(initial = true)
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
@@ -155,7 +154,7 @@ fun ProductDetailScreen(
                                 .fillMaxWidth()
                                 .aspectRatio(1f),
                             shape = RoundedCornerShape(dimens.cardCorner * 1.5f),
-                            colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
                             Box(modifier = Modifier.fillMaxSize().padding(dimens.large), contentAlignment = Alignment.Center) {
@@ -170,12 +169,12 @@ fun ProductDetailScreen(
                             .weight(1.2f)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        ProductInfoSection(product, isDark)
+                        ProductInfoSection(product)
                         Spacer(modifier = Modifier.height(dimens.large))
                         ReviewSection(reviews)
                         if (similarProducts.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(dimens.large))
-                            SimilarProductsSection(similarProducts, isDark, onProductClick)
+                            SimilarProductsSection(similarProducts, onProductClick)
                         }
                         Spacer(modifier = Modifier.height(100.dp))
                     }
@@ -191,7 +190,7 @@ fun ProductDetailScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth().height(if (dimens.padding > 24.dp) 400.dp else 300.dp),
                         shape = RoundedCornerShape(dimens.cardCorner * 1.5f),
-                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2D2D30) else Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ) {
                         Box(modifier = Modifier.fillMaxSize().padding(dimens.large), contentAlignment = Alignment.Center) {
@@ -199,12 +198,12 @@ fun ProductDetailScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(dimens.large))
-                    ProductInfoSection(product, isDark)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = Color.Gray.copy(alpha = 0.1f))
+                    ProductInfoSection(product)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                     ReviewSection(reviews)
                     if (similarProducts.isNotEmpty()) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = Color.Gray.copy(alpha = 0.1f))
-                        SimilarProductsSection(similarProducts, isDark, onProductClick)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = dimens.medium), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        SimilarProductsSection(similarProducts, onProductClick)
                     }
                     Spacer(modifier = Modifier.height(100.dp))
                 }
@@ -258,31 +257,6 @@ fun ProductDetailScreen(
                 onPaymentMethodChange = { buyNowPaymentMethod = it },
                 onDismiss = { showBuyNowSheet = false },
                 onConfirmCheckout = {
-                    showBuyNowSheet = false
-                    showBuyNowReceipt = true
-                },
-                isDark = isDark
-            )
-        }
-
-        if (showBuyNowReceipt) {
-            val tempCartItem = remember(product) {
-                CartItem(
-                    productId = product.id,
-                    title = product.title,
-                    price = product.price,
-                    description = product.description,
-                    category = product.category,
-                    image = product.image,
-                    quantity = 1
-                )
-            }
-            val addressText = currentUser?.address ?: "Default Address, New York"
-            OrderReviewScreen(
-                selectedItems = listOf(tempCartItem),
-                selectedPaymentMethod = buyNowPaymentMethod,
-                onDismiss = { showBuyNowReceipt = false },
-                onConfirm = {
                     val discounted = (product.price - buyNowVoucher.second).coerceAtLeast(0.0)
                     detailViewModel.placeDirectOrder(
                         context,
@@ -291,19 +265,18 @@ fun ProductDetailScreen(
                         buyNowPaymentMethod,
                         buyNowVoucher.first
                     )
-                    showBuyNowReceipt = false
+                    showBuyNowSheet = false
                     onOrderPlaced()
                 },
-                currentUserAddress = addressText,
                 isDark = isDark,
-                selectedVoucher = buyNowVoucher
+                address = currentUser?.address ?: "Default Address, New York"
             )
         }
     }
 }
 
 @Composable
-fun ProductInfoSection(product: ProductDto, isDark: Boolean) {
+fun ProductInfoSection(product: ProductDto) {
     val dimens = LocalDimens.current
     Column {
         Box(
@@ -391,7 +364,7 @@ fun ReviewSection(reviews: List<ProductReview>) {
 }
 
 @Composable
-fun SimilarProductsSection(similarProducts: List<ProductDto>, isDark: Boolean, onProductClick: (ProductDto) -> Unit) {
+fun SimilarProductsSection(similarProducts: List<ProductDto>, onProductClick: (ProductDto) -> Unit) {
     val dimens = LocalDimens.current
     Column {
         Text(text = "Similar Premium Products", fontSize = if (dimens.padding > 24.dp) 22.sp else 18.sp, fontWeight = FontWeight.Bold)
@@ -405,7 +378,7 @@ fun SimilarProductsSection(similarProducts: List<ProductDto>, isDark: Boolean, o
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(dimens.small), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(modifier = Modifier.size(if (dimens.padding > 24.dp) 140.dp else 100.dp).clip(RoundedCornerShape(dimens.small)).background(if (isDark) Color(0xFF3D3D42) else Color.White).padding(10.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.size(if (dimens.padding > 24.dp) 140.dp else 100.dp).clip(RoundedCornerShape(dimens.small)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)).padding(10.dp), contentAlignment = Alignment.Center) {
                             AsyncImage(model = simProduct.image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
                         Spacer(modifier = Modifier.height(dimens.small))

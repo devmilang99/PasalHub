@@ -168,6 +168,7 @@ fun ThemeCard(
     Card(
         modifier = modifier
             .scale(scaleFactor)
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(24.dp))
             .clickable { onSelect() },
         shape = RoundedCornerShape(24.dp),
@@ -178,7 +179,7 @@ fun ThemeCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween

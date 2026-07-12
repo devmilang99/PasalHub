@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.dashboard.cart.domain.CartRepository
 import com.example.core.database.data.CartItem
 import com.example.core.database.data.UserEntity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,6 +21,13 @@ class CartViewModel @Inject constructor(
 
     val cartItems: StateFlow<List<CartItem>> = repository.getCartItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    var selectedItemIds: Set<Int> by mutableStateOf(emptySet())
+        private set
+
+    fun updateSelectedItems(ids: Set<Int>) {
+        selectedItemIds = ids
+    }
 
     val currentUser: StateFlow<UserEntity?> = repository.getUser()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

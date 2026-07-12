@@ -29,25 +29,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import coil.compose.AsyncImage
-import com.example.core.application.utils.screens.OrderReviewScreen
 import com.example.core.database.data.CartItem
 import com.example.dashboard.cart.viewmodel.CartViewModel
 import com.example.core.application.utils.screens.formatDecimalPrice
 import com.example.core.application.utils.screens.formatPrice
+import com.example.ui.theme.PasalHubTheme
 
 @Composable
-fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -> Unit) {
+fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderReview: (List<CartItem>, Double, Double, Double, Double, String, String, String) -> Unit) {
     val cartItemsList by viewModel.cartItems.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
-    val isDark by viewModel.isDarkTheme.collectAsState()
-    val context = LocalContext.current
 
+    val context = LocalContext.current
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
 
     // Set of selected item IDs. By default, all items are selected.
-    var selectedItemIds by remember(cartItemsList) { 
-        mutableStateOf(cartItemsList.map { it.productId }.toSet()) 
+    var selectedItemIds by remember(cartItemsList) {
+        mutableStateOf(cartItemsList.map { it.productId }.toSet())
+    }
+
+    LaunchedEffect(selectedItemIds) {
+        viewModel.updateSelectedItems(selectedItemIds)
     }
 
     // Voucher selection
@@ -65,21 +68,19 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
 
     // Dialog states
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var showCheckoutConfirmDialog by remember { mutableStateOf(false) }
 
-    val bgColor = if (isDark) Color.Black else Color(0xFFFDFBF7)
-    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF64748B)
-    val cardColor = if (isDark) Color(0xFF1B1B1D) else Color(0xFFFDFBF7)
+    val textColor = PasalHubTheme.colors.textPrimary
+    val mutedTextColor = PasalHubTheme.colors.textSecondary
+    val cardColor = PasalHubTheme.colors.surface
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
-            CartHeader(onBack, isDark, textColor, cartItemsList.isNotEmpty(), onDeleteClick = { showDeleteConfirmDialog = true })
+            CartHeader(onBack = onBack, onDeleteClick = { showDeleteConfirmDialog = true }, hasItems = cartItemsList.isNotEmpty(), textColor = textColor)
 
             if (cartItemsList.isEmpty()) {
                 EmptyCartView(textColor, mutedTextColor)
@@ -116,9 +117,7 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                                             selectedItemIds = if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
                                         },
                                         onIncrease = { viewModel.increaseQuantity(item) },
-                                        onDecrease = { viewModel.decreaseQuantity(item) },
-                                        onDelete = { viewModel.deleteCartItem(item) },
-                                        isDark = isDark
+                                        onDecrease = { viewModel.decreaseQuantity(item) }
                                     )
                                 }
                             }
@@ -133,7 +132,6 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                             val selectedItems = cartItemsList.filter { selectedItemIds.contains(it.productId) }
                             CartSummaryCard(
                                 selectedItems = selectedItems,
-                                isDark = isDark,
                                 cardColor = cardColor,
                                 textColor = textColor,
                                 mutedTextColor = mutedTextColor,
@@ -144,9 +142,36 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                                 onVoucherExpandedChange = { isVoucherExpanded = it },
                                 selectedPaymentMethod = selectedPaymentMethod,
                                 onPaymentMethodChange = { selectedPaymentMethod = it },
+                                address = currentUser?.address ?: "Default Address, New York",
                                 onCheckoutClick = {
-                                    if (selectedItems.isNotEmpty()) showCheckoutConfirmDialog = true
-                                    else viewModel.showNotification("Select an item first.")
+                                    if (selectedItems.isNotEmpty()) {
+                                        val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
+                                        val discountAmount = if (itemsSubtotal > 0.0) {
+                                            if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
+                                                itemsSubtotal
+                                            } else {
+                                                selectedVoucher.second
+                                            }
+                                        } else {
+                                            0.0
+                                        }
+                                        val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
+                                        val taxAmount = discountedSubtotal * 0.05
+                                        val finalTotal = discountedSubtotal + taxAmount
+
+                                        onOrderReview(
+                                            selectedItems,
+                                            itemsSubtotal,
+                                            taxAmount,
+                                            discountAmount,
+                                            finalTotal,
+                                            selectedVoucher.first,
+                                            selectedPaymentMethod,
+                                            currentUser?.address ?: "Default Address, New York"
+                                        )
+                                    } else {
+                                        viewModel.showNotification("Select an item first.")
+                                    }
                                 }
                             )
                         }
@@ -177,17 +202,14 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                                         selectedItemIds = if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
                                     },
                                     onIncrease = { viewModel.increaseQuantity(item) },
-                                    onDecrease = { viewModel.decreaseQuantity(item) },
-                                    onDelete = { viewModel.deleteCartItem(item) },
-                                    isDark = isDark
+                                    onDecrease = { viewModel.decreaseQuantity(item) }
                                 )
                             }
                         }
-                        
+
                         val selectedItems = cartItemsList.filter { selectedItemIds.contains(it.productId) }
                         CartSummaryCard(
                             selectedItems = selectedItems,
-                            isDark = isDark,
                             cardColor = cardColor,
                             textColor = textColor,
                             mutedTextColor = mutedTextColor,
@@ -198,9 +220,36 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                             onVoucherExpandedChange = { isVoucherExpanded = it },
                             selectedPaymentMethod = selectedPaymentMethod,
                             onPaymentMethodChange = { selectedPaymentMethod = it },
+                            address = currentUser?.address ?: "Default Address, New York",
                             onCheckoutClick = {
-                                if (selectedItems.isNotEmpty()) showCheckoutConfirmDialog = true
-                                else viewModel.showNotification("Select an item first.")
+                                if (selectedItems.isNotEmpty()) {
+                                    val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
+                                    val discountAmount = if (itemsSubtotal > 0.0) {
+                                        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
+                                            itemsSubtotal
+                                        } else {
+                                            selectedVoucher.second
+                                        }
+                                    } else {
+                                        0.0
+                                    }
+                                    val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
+                                    val taxAmount = discountedSubtotal * 0.05
+                                    val finalTotal = discountedSubtotal + taxAmount
+
+                                    onOrderReview(
+                                        selectedItems,
+                                        itemsSubtotal,
+                                        taxAmount,
+                                        discountAmount,
+                                        finalTotal,
+                                        selectedVoucher.first,
+                                        selectedPaymentMethod,
+                                        currentUser?.address ?: "Default Address, Ktm HQ"
+                                    )
+                                } else {
+                                    viewModel.showNotification("Select an item first.")
+                                }
                             }
                         )
                     }
@@ -223,7 +272,7 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                             selectedItemIds = emptySet()
                             showDeleteConfirmDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFFE57373) else Color(0xFFC62828))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text("Delete", color = Color.White)
                     }
@@ -235,57 +284,17 @@ fun CartScreen(viewModel: CartViewModel, onBack: () -> Unit, onOrderPlaced: () -
                 }
             )
         }
-
-        // Custom Premium Order Summary Slide-up Overlay
-        if (showCheckoutConfirmDialog) {
-            val selectedItems = remember(selectedItemIds, cartItemsList) {
-                cartItemsList.filter { selectedItemIds.contains(it.productId) }
-            }
-            val addressText = currentUser?.address ?: "Default Address, New York"
-            OrderReviewScreen(
-                selectedItems = selectedItems,
-                selectedPaymentMethod = selectedPaymentMethod,
-                onDismiss = { showCheckoutConfirmDialog = false },
-                onConfirm = {
-                    val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
-                    val discountAmount = if (itemsSubtotal > 0.0) {
-                        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
-                            itemsSubtotal
-                        } else {
-                            selectedVoucher.second
-                        }
-                    } else {
-                        0.0
-                    }
-                    val discountedSubtotal = (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
-                    val taxAmount = discountedSubtotal * 0.05
-                    val finalTotal = discountedSubtotal + taxAmount
-
-                    viewModel.checkoutSelected(
-                        context = context,
-                        selectedItems = selectedItems,
-                        finalTotal = finalTotal,
-                        paymentMethod = selectedPaymentMethod,
-                        appliedVoucher = selectedVoucher.first
-                    )
-                    showCheckoutConfirmDialog = false
-                    onOrderPlaced()
-                },
-                currentUserAddress = addressText,
-                isDark = isDark,
-                selectedVoucher = selectedVoucher
-            )
-        }
     }
 }
 
 @Composable
-fun CartHeader(onBack: () -> Unit, isDark: Boolean, textColor: Color, hasItems: Boolean, onDeleteClick: () -> Unit) {
+fun CartHeader(onBack: () -> Unit,onDeleteClick: () -> Unit, hasItems: Boolean,textColor: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
     ) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = textColor)
@@ -294,9 +303,9 @@ fun CartHeader(onBack: () -> Unit, isDark: Boolean, textColor: Color, hasItems: 
         if (hasItems) {
             IconButton(
                 onClick = onDeleteClick,
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(if (isDark) Color(0xFF231415) else Color(0xFFFFEBEE))
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
             ) {
-                Icon(Icons.Default.Delete, "Delete", tint = if (isDark) Color(0xFFE57373) else Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -323,7 +332,7 @@ fun SelectionControls(selectedCount: Int, totalCount: Int, allSelected: Boolean,
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSelectAll(!allSelected) }) {
             Checkbox(
                 checked = allSelected, onCheckedChange = onSelectAll,
-                colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50), uncheckedColor = mutedTextColor),
+                colors = CheckboxDefaults.colors(checkedColor = PasalHubTheme.colors.success, uncheckedColor = mutedTextColor),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -335,10 +344,10 @@ fun SelectionControls(selectedCount: Int, totalCount: Int, allSelected: Boolean,
 
 @Composable
 fun CartSummaryCard(
-    selectedItems: List<CartItem>, isDark: Boolean, cardColor: Color, textColor: Color, mutedTextColor: Color,
+    selectedItems: List<CartItem>, cardColor: Color, textColor: Color, mutedTextColor: Color,
     selectedVoucher: Pair<String, Double>, onVoucherChange: (Pair<String, Double>) -> Unit,
     vouchers: List<Pair<String, Double>>, isVoucherExpanded: Boolean, onVoucherExpandedChange: (Boolean) -> Unit,
-    selectedPaymentMethod: String, onPaymentMethodChange: (String) -> Unit, onCheckoutClick: () -> Unit
+    selectedPaymentMethod: String, onPaymentMethodChange: (String) -> Unit, address: String, onCheckoutClick: () -> Unit
 ) {
     val itemsSubtotal = selectedItems.sumOf { it.price * it.quantity }
     val discountAmount = if (itemsSubtotal > 0.0) {
@@ -352,24 +361,24 @@ fun CartSummaryCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.weight(1.8f)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if (isDark) Color(0xFF0F0F10) else Color(0xFFE2E4E9)).clickable { onVoucherExpandedChange(true) }.padding(horizontal = 12.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onVoucherExpandedChange(true) }.padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = if (selectedVoucher.first == "None") "Select voucher" else "Voucher: ${selectedVoucher.first}", fontSize = 13.sp, color = if (selectedVoucher.first == "None") mutedTextColor else Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
+                        Text(text = if (selectedVoucher.first == "None") "Select voucher" else "Voucher: ${selectedVoucher.first}", fontSize = 13.sp, color = if (selectedVoucher.first == "None") mutedTextColor else PasalHubTheme.colors.success, fontWeight = FontWeight.Medium)
                         Icon(Icons.Default.ArrowDropDown, null, tint = mutedTextColor, modifier = Modifier.size(20.dp))
                     }
-                    DropdownMenu(expanded = isVoucherExpanded, onDismissRequest = { onVoucherExpandedChange(false) }, modifier = Modifier.background(if (isDark) Color(0xFF1E1E20) else Color.White)) {
+                    DropdownMenu(expanded = isVoucherExpanded, onDismissRequest = { onVoucherExpandedChange(false) }, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                         vouchers.forEach { v ->
                             DropdownMenuItem(text = {
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(v.first, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textColor)
-                                    if (v.second > 0) Text("-Rs. ${v.second.toInt()}", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    if (v.second > 0) Text("-Rs. ${v.second.toInt()}", color = PasalHubTheme.colors.success, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }, onClick = { onVoucherChange(v); onVoucherExpandedChange(false) })
                         }
@@ -384,7 +393,7 @@ fun CartSummaryCard(
                             }
                         }
                         if (selectedItems.size > 3) {
-                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9)).border(1.dp, textColor.copy(alpha = 0.8f), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).border(1.dp, textColor.copy(alpha = 0.8f), CircleShape), contentAlignment = Alignment.Center) {
                                 Text("+${selectedItems.size - 3}", fontSize = 9.sp, color = textColor, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -395,7 +404,7 @@ fun CartSummaryCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(Triple("Cash", Icons.Default.Money, "Cash on Delivery"), Triple("Card", Icons.Default.CreditCard, "Credit / Debit Card"), Triple("E-sewa", Icons.Default.Smartphone, "E-sewa")).forEach { (label, icon, method) ->
                     val isSel = selectedPaymentMethod == method
-                    Box(modifier = Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(12.dp)).background(if (isSel) Color(0xFF4CAF50) else (if (isDark) Color(0xFF2D2D30) else Color(0xFFE2E4E9))).clickable { onPaymentMethodChange(method) }, contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(12.dp)).background(if (isSel) PasalHubTheme.colors.success else MaterialTheme.colorScheme.surfaceVariant).clickable { onPaymentMethodChange(method) }, contentAlignment = Alignment.Center) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(icon, label, tint = if (isSel) Color.White else mutedTextColor, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -405,19 +414,28 @@ fun CartSummaryCard(
                 }
             }
 
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Delivery Location", color = mutedTextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, null, tint = PasalHubTheme.colors.success, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = address, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+
             SummaryRow("Subtotal", formatDecimalPrice(itemsSubtotal), mutedTextColor, textColor)
             SummaryRow("Tax (5%)", formatDecimalPrice(taxAmount), mutedTextColor, textColor)
             if (discountAmount > 0.0) SummaryRow("Discount (${selectedVoucher.first})", "-${
                 formatDecimalPrice(
                     discountAmount
                 )
-            }", Color(0xFF4CAF50), Color(0xFF4CAF50))
+            }", PasalHubTheme.colors.success, PasalHubTheme.colors.success)
             HorizontalDivider(color = mutedTextColor.copy(alpha = 0.2f))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Total", color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(formatPrice(finalTotal), color = Color(0xFF4CAF50), fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(formatPrice(finalTotal), color = PasalHubTheme.colors.success, fontSize = 20.sp, fontWeight = FontWeight.Black)
             }
-            Button(onClick = onCheckoutClick, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("checkout_selected_button"), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFF0F0F10) else Color(0xFF0C1324), contentColor = Color.White), enabled = selectedItems.isNotEmpty()) {
+            Button(onClick = onCheckoutClick, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("checkout_selected_button"), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary), enabled = selectedItems.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Checkout Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -442,14 +460,12 @@ fun CartItemRow(
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onIncrease: () -> Unit,
-    onDecrease: () -> Unit,
-    onDelete: () -> Unit,
-    isDark: Boolean
+    onDecrease: () -> Unit
 ) {
-    val textColor = if (isDark) Color.White else Color(0xFF0C1324)
-    val mutedTextColor = if (isDark) Color.Gray else Color(0xFF64748B)
-    val itemColor = if (isDark) Color(0xFF161618) else Color.White
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
+    val textColor = PasalHubTheme.colors.textPrimary
+    val mutedTextColor = PasalHubTheme.colors.textSecondary
+    val itemColor = MaterialTheme.colorScheme.surface
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     Card(
         modifier = Modifier
@@ -468,12 +484,12 @@ fun CartItemRow(
                 checked = isChecked,
                 onCheckedChange = onCheckedChange,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = Color(0xFF4CAF50),
+                    checkedColor = PasalHubTheme.colors.success,
                     uncheckedColor = mutedTextColor.copy(alpha = 0.5f)
                 ),
                 modifier = Modifier.testTag("cart_checkbox_${item.productId}")
             )
-            
+
             Spacer(modifier = Modifier.width(8.dp))
 
             Box(
@@ -506,15 +522,15 @@ fun CartItemRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 Text(
                     text = item.category.uppercase(),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color(0xFF4CAF50),
+                    color = PasalHubTheme.colors.success,
                     letterSpacing = 1.sp
                 )
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -526,11 +542,11 @@ fun CartItemRow(
                         fontWeight = FontWeight.Black,
                         color = textColor
                     )
-                    
+
                     Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (isDark) Color(0xFF252528) else Color(0xFFE2E4E9))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -538,7 +554,7 @@ fun CartItemRow(
                             Icon(
                                 imageVector = if (item.quantity > 1) Icons.Default.Remove else Icons.Default.Delete,
                                 contentDescription = "Decrease",
-                                tint = if (item.quantity > 1) textColor else (if (isDark) Color(0xFFE57373) else Color(0xFFC62828)),
+                                tint = if (item.quantity > 1) textColor else MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(14.dp)
                             )
                         }

@@ -121,19 +121,11 @@ fun RegisterScreen(
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = if (isDark) {
-                            listOf(
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.85f),
-                                Color.Black
-                            )
-                        } else {
-                            listOf(
-                                Color.White.copy(alpha = 0.3f),
-                                Color.White.copy(alpha = 0.95f),
-                                Color.White
-                            )
-                        }
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.3f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.background
+                        )
                     )
                 )
         )
@@ -418,7 +410,7 @@ fun RegisterScreen(
                     authDialogState = null
                 },
                 state = state,
-                isDark = isDark
+
             )
         }
     }

@@ -10,7 +10,7 @@ plugins {
   alias(libs.plugins.hilt)
 }
 
-val dbVersion = 4
+val dbVersion = 1
 
 android {
   namespace = "com.example"
@@ -40,15 +40,21 @@ android {
 
   buildTypes {
     release {
-      isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
+
     debug {
+
       isDebuggable = true
       // Disable PNG crunching in debug builds
       isCrunchPngs = false
+
+      // Disables resource shrinking/obfuscation on debug runs to save time
+      isMinifyEnabled = false
+
     }
   }
   compileOptions {
@@ -81,10 +87,6 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
@@ -98,9 +100,9 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
-  // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.androidx.lifecycle.process)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)

@@ -10,4 +10,7 @@ interface AppPreferencesRepository {
     
     fun getNotificationEvent(): Flow<String>
     suspend fun emitNotification(message: String)
+
+    fun getFavoriteIds(): Flow<Set<Int>>
+    suspend fun toggleFavorite(productId: Int)
 }

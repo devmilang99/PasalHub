@@ -21,9 +21,6 @@ class HomeRepositoryImpl @Inject constructor(
     private val appPrefs: AppPreferencesRepository
 ) : HomeRepository {
 
-    private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
-    private val favPrefs = context.getSharedPreferences("pasalhub_favorites", Context.MODE_PRIVATE)
-
     override fun getProducts(): Flow<Resource<List<ProductDto>>> = productRepository.getProducts()
 
     override fun getProductsByCategory(category: String): Flow<Resource<List<ProductDto>>> = 
@@ -43,22 +40,19 @@ class HomeRepositoryImpl @Inject constructor(
         appPrefs.toggleTheme()
     }
 
-    override fun getFavoriteIds(): Flow<Set<Int>> = flow {
-        val favStrings = favPrefs.getStringSet("fav_set", emptySet()) ?: emptySet()
-        emit(favStrings.mapNotNull { it.toIntOrNull() }.toSet())
-    }
+    override fun getFavoriteIds(): Flow<Set<Int>> = appPrefs.getFavoriteIds()
 
     override suspend fun toggleFavorite(productId: Int) {
-        val current = favPrefs.getStringSet("fav_set", emptySet())?.toMutableSet() ?: mutableSetOf()
-        if (current.contains(productId.toString())) {
-            current.remove(productId.toString())
-        } else {
-            current.add(productId.toString())
-        }
-        favPrefs.edit().putStringSet("fav_set", current).apply()
+        appPrefs.toggleFavorite(productId)
     }
 
     override suspend fun addToCart(product: ProductDto) {
+        val sellerName = when(product.category.lowercase()) {
+            "electronics" -> "Tech Gear Hub"
+            "jewelery" -> "Elegance Gems"
+            "men's clothing", "women's clothing", "clothing" -> "Fashion Central"
+            else -> "${product.category.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }} Boutique"
+        }
         productRepository.addToCart(
             CartItem(
                 productId = product.id,
@@ -67,8 +61,15 @@ class HomeRepositoryImpl @Inject constructor(
                 description = product.description,
                 category = product.category,
                 image = product.image,
-                quantity = 1
+                quantity = 1,
+                seller = sellerName
             )
         )
     }
+
+    override suspend fun removeFromCart(productId: Int) {
+        productRepository.removeFromCart(productId)
+    }
+
+    override fun getCartItems(): Flow<List<CartItem>> = productRepository.getCartItems()
 }

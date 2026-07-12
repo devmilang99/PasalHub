@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import coil.compose.AsyncImage
+import com.example.core.database.data.CartItem
 import com.example.core.networking.remote.ProductDto
 import com.example.ai.presentation.AiSearchViewModel
 import com.example.core.application.presentation.AppViewModel
@@ -31,8 +32,6 @@ import com.example.dashboard.order.ui.OrdersScreen
 import com.example.dashboard.order.viewmodel.OrderViewModel
 import com.example.dashboard.profile.ui.ProfileScreen
 import com.example.dashboard.profile.viewmodel.ProfileViewModel
-import com.example.core.application.utils.screens.PasalHubAlertDialog
-import com.example.core.application.utils.screens.SuccessScreen
 import com.example.core.viewmodel.MainViewModel
 import com.example.ui.theme.LocalDimens
 
@@ -48,7 +47,9 @@ fun DashboardScreen(
     profileViewModel: ProfileViewModel,
     onLogout: () -> Unit,
     onAiSearchClick: () -> Unit = {},
+    onFilterClick: () -> Unit = {},
     onProductClick: (ProductDto) -> Unit,
+    onOrderReview: (List<CartItem>, Double, Double, Double, Double, String, String, String) -> Unit = { _, _, _, _, _, _, _, _ -> },
     initialTab: Int = 0
 ) {
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0: Home, 1: Cart, 2: Order, 3: Profile
@@ -61,8 +62,6 @@ fun DashboardScreen(
     val isDark by viewModel.isDarkTheme.collectAsState()
     val orders by orderViewModel.ordersState.collectAsState()
     val recentOrdersCount = orders.count { it.status in listOf("Placing", "Placed", "Packaging", "Sent for Delivery") }
-    var notificationMessage by remember { mutableStateOf<String?>(null) }
-    var showNotificationDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -71,44 +70,27 @@ fun DashboardScreen(
     val useNavRail = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(600)
     val dimens = LocalDimens.current
 
+    val navItemColors = NavigationBarItemDefaults.colors(
+        indicatorColor = Color.Transparent,
+        selectedIconColor = MaterialTheme.colorScheme.primary,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    val navRailItemColors = NavigationRailItemDefaults.colors(
+        indicatorColor = Color.Transparent,
+        selectedIconColor = MaterialTheme.colorScheme.primary,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
     LaunchedEffect(Unit) {
         appViewModel.notificationEvent.collect { message ->
-            if (message.contains("to your cart", ignoreCase = true)) {
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    duration = SnackbarDuration.Short
-                )
-            } else {
-                notificationMessage = message
-                showNotificationDialog = true
-            }
-        }
-    }
-
-    if (showNotificationDialog && notificationMessage != null) {
-        val isOrderSuccess = notificationMessage!!.contains("placed", ignoreCase = true) || 
-                             notificationMessage!!.contains("confirmed", ignoreCase = true)
-
-        if (isOrderSuccess) {
-            SuccessScreen(
-                message = notificationMessage!!,
-                onContinue = { 
-                    showNotificationDialog = false
-                    notificationMessage = null 
-                },
-                isDark = isDark
-            )
-        } else {
-            PasalHubAlertDialog(
-                onDismissRequest = { 
-                    showNotificationDialog = false
-                    notificationMessage = null
-                },
-                title = "Notification",
-                text = notificationMessage!!,
-                confirmButtonText = "Dismiss",
-                icon = if (notificationMessage!!.contains("added", ignoreCase = true)) Icons.Default.ShoppingCart else Icons.Default.Notifications,
-                isDark = isDark
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
             )
         }
     }
@@ -122,14 +104,12 @@ fun DashboardScreen(
             NavigationRail(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
                     .testTag("navigation_rail"),
                 containerColor = MaterialTheme.colorScheme.surface,
                 header = {
                     Surface(
                         modifier = Modifier
-                            .padding(top = dimens.medium, bottom = dimens.extraLarge)
+
                             .size(dimens.logoSize)
                             .clip(CircleShape),
                         color = MaterialTheme.colorScheme.primary
@@ -150,7 +130,8 @@ fun DashboardScreen(
                     onClick = { selectedTab = 0 },
                     icon = { Icon(if (selectedTab == 0) Icons.Default.Home else Icons.Outlined.Home, contentDescription = "Home Tab") },
                     label = { Text("Home") },
-                    modifier = Modifier.testTag("nav_rail_home")
+                    modifier = Modifier.testTag("nav_rail_home"),
+                    colors = navRailItemColors
                 )
                 NavigationRailItem(
                     selected = selectedTab == 1,
@@ -167,7 +148,8 @@ fun DashboardScreen(
                         }
                     },
                     label = { Text("Cart") },
-                    modifier = Modifier.testTag("nav_rail_cart")
+                    modifier = Modifier.testTag("nav_rail_cart"),
+                    colors = navRailItemColors
                 )
                 NavigationRailItem(
                     selected = selectedTab == 2,
@@ -184,7 +166,8 @@ fun DashboardScreen(
                         }
                     },
                     label = { Text("Orders") },
-                    modifier = Modifier.testTag("nav_rail_orders")
+                    modifier = Modifier.testTag("nav_rail_orders"),
+                    colors = navRailItemColors
                 )
                 
                 Spacer(modifier = Modifier.weight(1f))
@@ -211,7 +194,8 @@ fun DashboardScreen(
                     label = { Text("Profile") },
                     modifier = Modifier
                         .testTag("nav_rail_profile")
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 16.dp),
+                    colors = navRailItemColors
                 )
             }
         }
@@ -220,23 +204,6 @@ fun DashboardScreen(
             modifier = Modifier
                 .weight(1f)
                 .testTag("dashboard_scaffold"),
-            snackbarHost = { 
-                SnackbarHost(hostState = snackbarHostState) { data ->
-                    Snackbar(
-                        modifier = Modifier.padding(horizontal = dimens.small, vertical = dimens.small),
-                        shape = RoundedCornerShape(dimens.cardCorner),
-                        containerColor = if (isDark) Color(0xFF1E1E20) else Color(0xFF323232),
-                        contentColor = Color.White,
-                        actionContentColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(data.visuals.message, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            },
             bottomBar = {
                 val showBottomNav = !useNavRail && when {
                     selectedTab == 1 -> cartItems.size <= 3
@@ -267,7 +234,8 @@ fun DashboardScreen(
                                 onClick = { selectedTab = 0 },
                                 icon = { Icon(if (selectedTab == 0) Icons.Default.Home else Icons.Outlined.Home, contentDescription = "Home Tab") },
                                 label = { Text("Home", fontSize = 11.sp) },
-                                modifier = Modifier.testTag("nav_home_tab")
+                                modifier = Modifier.testTag("nav_home_tab"),
+                                colors = navItemColors
                             )
                             NavigationBarItem(
                                 selected = selectedTab == 1,
@@ -284,7 +252,8 @@ fun DashboardScreen(
                                     }
                                 },
                                 label = { Text("Cart", fontSize = 11.sp) },
-                                modifier = Modifier.testTag("nav_cart_tab")
+                                modifier = Modifier.testTag("nav_cart_tab"),
+                                colors = navItemColors
                             )
                             NavigationBarItem(
                                 selected = selectedTab == 2,
@@ -301,7 +270,8 @@ fun DashboardScreen(
                                     }
                                 },
                                 label = { Text("Orders", fontSize = 11.sp) },
-                                modifier = Modifier.testTag("nav_orders_tab")
+                                modifier = Modifier.testTag("nav_orders_tab"),
+                                colors = navItemColors
                             )
                             NavigationBarItem(
                                 selected = selectedTab == 3,
@@ -323,7 +293,8 @@ fun DashboardScreen(
                                     )
                                 },
                                 label = { Text("Profile", fontSize = 11.sp) },
-                                modifier = Modifier.testTag("nav_profile_tab")
+                                modifier = Modifier.testTag("nav_profile_tab"),
+                                colors = navItemColors
                             )
                         }
                     }
@@ -342,9 +313,13 @@ fun DashboardScreen(
                         onProductClick = onProductClick,
                         onAiSearchClick = onAiSearchClick
                     )
-                    1 -> CartScreen(cartViewModel, onBack = { selectedTab = 0 }, onOrderPlaced = { selectedTab = 2 })
+                    1 -> CartScreen(
+                        cartViewModel, 
+                        onBack = { selectedTab = 0 }, 
+                        onOrderReview = onOrderReview
+                    )
                     2 -> OrdersScreen(orderViewModel)
-                    3 -> ProfileScreen(profileViewModel, onLogout, onProductClick = onProductClick)
+                    3 -> ProfileScreen(profileViewModel, orderViewModel, onLogout, onProductClick = onProductClick)
                 }
             }
         }
