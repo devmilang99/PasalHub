@@ -1,0 +1,4 @@
+- `[x]` Update `AISearchScreen` to pass `isModelReady` separately to `SearchInputBar`
+- `[x]` Refactor `SearchInputBar` to handle `isProcessing` and `isModelReady` independently
+- `[x]` Verify text input is enabled when model is missing but AI is idle
+- `[x]` Verify camera icon visibility depends on `isModelReady`

@@ -44,8 +44,8 @@
             android:name=".core.application.receiver.NotificationActionReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.ACTION_TOGGLE_PAUSE" />
-                <action android:name="com.example.ACTION_CANCEL_ORDER" />
+                <action android:name="com.psl.pasalhub.ACTION_TOGGLE_PAUSE" />
+                <action android:name="com.psl.pasalhub.ACTION_CANCEL_ORDER" />
             </intent-filter>
         </receiver>
 

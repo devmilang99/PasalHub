@@ -1,0 +1,12 @@
+- [x] Update SupabaseSyncWorker (Products)
+- [x] Update CartSyncWorker (Two-way sync)
+- [x] Update FavoriteSyncWorker (Two-way sync)
+- [x] Update OrderSyncWorker (Push with more fields)
+- [x] Update ProductRepository (Trigger syncs for cart/orders)
+- [x] Update CartRepositoryImpl (Already had triggers, verified)
+- [x] Update AppPreferencesRepositoryImpl (Already had triggers, verified)
+- [x] Update OrderRepositoryImpl (Added triggers for status updates)
+- [x] Update ProductDetailViewModel (Verified it uses repository methods with triggers)
+- [x] Fix Supabase API Key error
+    - [x] Remove quotes from `.env`
+    - [x] Add safety trim in `SupabaseModule.kt`

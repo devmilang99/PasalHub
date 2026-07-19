@@ -1,0 +1,5 @@
+- [x] Update `app/build.gradle.kts` to include root `assets/` folder
+- [x] Update `VisualSearchEngine.kt` normalization logic
+- [x] Run Gradle Sync
+- [x] Verify build with `./gradlew :app:assembleDebug`
+- [x] Create Walkthrough

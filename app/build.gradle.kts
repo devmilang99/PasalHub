@@ -1,23 +1,21 @@
-import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
-  alias(libs.plugins.google.services)
   alias(libs.plugins.hilt)
+    kotlin("plugin.serialization") version "2.4.0"
 }
 
 val dbVersion = 1
 
 android {
-  namespace = "com.example"
+    namespace = "com.psl.pasalhub"
   compileSdk = 37
 
   defaultConfig {
-    applicationId = "com.aistudio.ecommerceshop.pqwzxl"
+      applicationId = "com.psl.pasalhub"
     minSdk = 24
     targetSdk = 37
     versionCode = dbVersion
@@ -65,6 +63,11 @@ android {
     compose = true
     buildConfig = true
   }
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("../assets")
+        }
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
@@ -75,16 +78,11 @@ secrets {
   defaultPropertiesFileName = ".env.example"
 }
 
-googleServices {
-  missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN
-}
-
 
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
-  implementation(platform(libs.firebase.bom))
   implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)
@@ -104,31 +102,40 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.process)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.realtime)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.contentNegotiation)
+    implementation(libs.ktor.serialization.kotlinxJson)
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.coil.compose)
-  implementation(libs.converter.moshi)
-  implementation(libs.firebase.ai)
-  implementation(libs.firebase.appcheck.recaptcha)
-  implementation(libs.firebase.auth)
+    implementation(libs.generativeai) {
+        exclude(group = "io.ktor")
+    }
   implementation(libs.googleid)
+  implementation(libs.errorprone.annotations)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)
-  implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
   implementation(libs.play.services.location)
-  implementation(libs.retrofit)
   testImplementation(libs.androidx.core)
   testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)
   testImplementation(libs.roborazzi.junit.rule)
-  androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.junit)
@@ -138,12 +145,19 @@ dependencies {
   implementation(libs.hilt.android)
   implementation(libs.hilt.navigation.compose)
   implementation(libs.hilt.work)
-  "ksp"(libs.hilt.compiler)
-  "ksp"(libs.hilt.androidx.compiler)
-  "ksp"(libs.androidx.room.compiler)
-  "ksp"(libs.moshi.kotlin.codegen)
+    ksp(libs.hilt.compiler)
+    ksp(libs.hilt.androidx.compiler)
+    ksp(libs.androidx.room.compiler)
 }
 
 ksp {
   arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.ktor") {
+            useVersion(libs.versions.ktor.get())
+        }
+    }
 }

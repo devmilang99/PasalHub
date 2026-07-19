@@ -1,0 +1,4 @@
+- [x] Extract filtering logic into `applySearchFilters` helper function
+- [x] Update `aiProductsState` to use `applySearchFilters`
+- [x] Update `handleFunctionCall` for `search_products` to return real product data to Gemini
+- [x] Verify build and AI responses

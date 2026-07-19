@@ -1,0 +1,8 @@
+- `[x]` Configure Supabase client to ignore unknown keys in `SupabaseModule.kt`
+- `[x]` Update `ProductEntity.kt` with nullable fields
+- `[x]` Update `ProductDto.kt` with nullable fields (Reverted to non-nullable for UI convenience)
+- `[x]` Update `Entities.kt` (OrderEntity, FavoriteEntity, CartItem) with nullable fields (Reverted to non-nullable for UI convenience)
+- `[x]` Add logging to `SupabaseSyncWorker.kt`
+- `[x]` Update `ProductRepository.kt` mapping logic
+- `[x]` Update `HomeScreen.kt` to handle nullable product data
+- `[x]` Verify build and sync process

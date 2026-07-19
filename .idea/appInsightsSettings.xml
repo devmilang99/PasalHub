@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.aistudio.ecommerceshop.pqwzxl" />
-                  <option name="mobileSdkAppId" value="1:1079515205022:android:261412179169c4dbcd1a8f" />
-                  <option name="projectId" value="pasal-hub" />
-                  <option name="projectNumber" value="1079515205022" />
+                  <option name="appId" value="PLACEHOLDER" />
+                  <option name="mobileSdkAppId" value="" />
+                  <option name="projectId" value="" />
+                  <option name="projectNumber" value="" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

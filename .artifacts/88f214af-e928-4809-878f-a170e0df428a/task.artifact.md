@@ -1,0 +1,11 @@
+- [x] Remove `mobile_clip.tflite` asset
+- [x] Delete core TFLite classes (`VisualSearchEngine.kt`, `VectorSearchRepository.kt`, `VectorSearchRepositoryTest.kt`, `VisualEmbeddingWorker.kt`)
+- [x] Clean up `ProductDto.kt` (remove `embedding` field)
+- [x] Clean up `ProductEntity.kt` (remove `embedding` field)
+- [x] Update `ProductDao.kt` (remove embedding-related queries)
+- [x] Update `SupabaseSyncWorker.kt` (remove `VisualEmbeddingWorker` enqueueing)
+- [x] Refactor `AiSearchViewModel.kt` (remove visual search logic)
+- [x] Refactor `AISearchScreen.kt` (remove visual search UI)
+- [x] Clean up `libs.versions.toml` and `app/build.gradle.kts`
+- [x] Verify build and run tests
+- [/] Git commit and push
