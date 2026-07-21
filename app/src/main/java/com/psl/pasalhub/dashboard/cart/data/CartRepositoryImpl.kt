@@ -1,12 +1,16 @@
 package com.psl.pasalhub.dashboard.cart.data
 
 import android.content.Context
-import androidx.work.*
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.database.data.CartDao
+import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.database.data.OrderDao
+import com.psl.pasalhub.core.database.data.OrderEntity
+import com.psl.pasalhub.core.database.data.UserDao
+import com.psl.pasalhub.core.database.data.UserEntity
+import com.psl.pasalhub.core.sync.SyncManager
+import com.psl.pasalhub.core.sync.SyncType
 import com.psl.pasalhub.dashboard.cart.domain.CartRepository
-import com.psl.pasalhub.core.database.data.*
-import com.psl.pasalhub.dashboard.cart.sync.CartSyncWorker
-import com.psl.pasalhub.dashboard.order.sync.OrderSyncWorker
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +23,7 @@ class CartRepositoryImpl @Inject constructor(
     private val cartDao: CartDao,
     private val orderDao: OrderDao,
     private val appPrefs: AppPreferencesRepository,
+    private val syncManager: SyncManager,
     @ApplicationContext private val context: Context
 ) : CartRepository {
 
@@ -30,7 +35,7 @@ class CartRepositoryImpl @Inject constructor(
 
     override suspend fun increaseQuantity(item: CartItem) {
         cartDao.updateCartItem(item.copy(quantity = item.quantity + 1))
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     override suspend fun decreaseQuantity(item: CartItem) {
@@ -39,17 +44,17 @@ class CartRepositoryImpl @Inject constructor(
         } else {
             cartDao.deleteCartItem(item)
         }
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     override suspend fun deleteCartItem(item: CartItem) {
         cartDao.deleteCartItem(item)
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     override suspend fun deleteMultipleCartItems(items: List<CartItem>) {
         items.forEach { cartDao.deleteCartItem(it) }
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     override suspend fun checkout(
@@ -76,28 +81,8 @@ class CartRepositoryImpl @Inject constructor(
 
             selectedItems.forEach { cartDao.deleteCartItem(it) }
 
-            scheduleCartSync()
-            scheduleOrderSync()
+            syncManager.triggerSync(SyncType.CART, immediate = true)
+            syncManager.triggerSync(SyncType.ORDERS, immediate = true)
         }
-    }
-
-    private fun scheduleCartSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<CartSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("cart_sync", ExistingWorkPolicy.REPLACE, syncRequest)
-    }
-
-    private fun scheduleOrderSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<OrderSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("order_sync", ExistingWorkPolicy.REPLACE, syncRequest)
     }
 }

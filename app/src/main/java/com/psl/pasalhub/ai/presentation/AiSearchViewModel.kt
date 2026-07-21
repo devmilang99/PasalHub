@@ -2,21 +2,38 @@ package com.psl.pasalhub.ai.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.ai.type.FunctionCallPart
+import com.google.firebase.ai.type.FunctionResponsePart
+import com.google.firebase.ai.type.content
 import com.psl.pasalhub.ai.data.GeminiSearchRouter
 import com.psl.pasalhub.ai.domain.model.SearchFields
 import com.psl.pasalhub.ai.domain.model.SearchIntent
-import com.google.ai.client.generativeai.type.FunctionCallPart
-import com.google.ai.client.generativeai.type.FunctionResponsePart
-import com.google.ai.client.generativeai.type.content
-import org.json.JSONArray
-import org.json.JSONObject
 import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.products.repository.Resource
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
+import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -66,7 +83,7 @@ class AiSearchViewModel @Inject constructor(
         _recommendationMessage.value = aiIntent.product_summary
 
         val flow = if (aiIntent.fields?.category != null && aiIntent.fields.category != "all") {
-            repository.getProductsByCategory(aiIntent.fields.category!!)
+            repository.getProductsByCategory(aiIntent.fields.category)
         } else {
             repository.getProducts()
         }
@@ -149,20 +166,20 @@ class AiSearchViewModel @Inject constructor(
         }
     }
 
-    private suspend fun handleFunctionCall(call: FunctionCallPart): JSONObject {
+    private suspend fun handleFunctionCall(call: FunctionCallPart): JsonObject {
+        val args = call.args
         return when (call.name) {
             "search_products" -> {
-                val args = call.args
-                val keywords = args["keywords"]
-                val category = args["category"]
-                val priceMax = args["price_max"]?.toDoubleOrNull()
-                val sortBy = args["sort_by"]
+                val keywords = args["keywords"]?.jsonPrimitive?.contentOrNull
+                val category = args["category"]?.jsonPrimitive?.contentOrNull
+                val priceMax = args["price_max"]?.jsonPrimitive?.doubleOrNull
+                val sortBy = args["sort_by"]?.jsonPrimitive?.contentOrNull
 
                 val fields = SearchFields(
                     keywords = keywords,
                     category = category,
-                    brand = args["brand"],
-                    color = args["color"],
+                    brand = args["brand"]?.jsonPrimitive?.contentOrNull,
+                    color = args["color"]?.jsonPrimitive?.contentOrNull,
                     size = null,
                     price_max = priceMax,
                     min_rating = null
@@ -196,28 +213,28 @@ class AiSearchViewModel @Inject constructor(
                 // We update the intent to trigger the existing filtering logic in aiProductsState
                 _aiSearchIntent.value = searchIntent
 
-                JSONObject().apply {
+                buildJsonObject {
                     put("status", "success")
                     put("count", filtered.size)
-                    val productsArray = JSONArray()
-                    filtered.forEach { product ->
-                        productsArray.put(JSONObject().apply {
-                            put("id", product.id)
-                            put("title", product.title)
-                            put("price", product.price)
-                            put("category", product.category)
-                        })
-                    }
-                    put("products", productsArray)
+                    put("products", buildJsonArray {
+                        filtered.forEach { product ->
+                            addJsonObject {
+                                put("id", product.id)
+                                put("title", product.title)
+                                put("price", product.price)
+                                put("category", product.category)
+                            }
+                        }
+                    })
                 }
             }
 
             "get_product_details" -> {
-                val productId = call.args["product_id"]?.toIntOrNull() ?: 0
+                val productId = args["product_id"]?.jsonPrimitive?.intOrNull ?: 0
                 val product = repository.getProductById(productId)
                 if (product != null) {
                     _manualProductList.value = listOf(product)
-                    JSONObject().apply {
+                    buildJsonObject {
                         put("status", "success")
                         put("title", product.title)
                         put("description", product.description)
@@ -225,7 +242,7 @@ class AiSearchViewModel @Inject constructor(
                         put("category", product.category)
                     }
                 } else {
-                    JSONObject().apply {
+                    buildJsonObject {
                         put("status", "error")
                         put("message", "Product not found.")
                     }
@@ -233,22 +250,22 @@ class AiSearchViewModel @Inject constructor(
             }
 
             "apply_discount" -> {
-                val code = call.args["coupon_code"]
+                val code = args["coupon_code"]?.jsonPrimitive?.contentOrNull
                 if (code?.uppercase() == "PASAL10") {
-                    JSONObject().apply {
+                    buildJsonObject {
                         put("status", "success")
                         put("discount", "10%")
                         put("message", "Coupon applied! You saved 10%.")
                     }
                 } else {
-                    JSONObject().apply {
+                    buildJsonObject {
                         put("status", "invalid")
                         put("message", "This coupon is invalid or expired.")
                     }
                 }
             }
 
-            else -> JSONObject().apply { put("status", "unknown_function") }
+            else -> buildJsonObject { put("status", "unknown_function") }
         }
     }
 

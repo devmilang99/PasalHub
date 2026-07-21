@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "Pasal Hub"
 
 include(":app")
+include(":baselineprofile")

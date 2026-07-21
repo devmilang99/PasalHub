@@ -13,4 +13,7 @@ interface AppPreferencesRepository {
 
     fun getFavoriteIds(): Flow<Set<Int>>
     suspend fun toggleFavorite(productId: Int)
+
+    fun getGlobalError(): Flow<AppError?>
+    suspend fun emitGlobalError(error: AppError?)
 }

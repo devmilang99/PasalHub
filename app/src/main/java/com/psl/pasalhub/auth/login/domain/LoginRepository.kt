@@ -8,6 +8,8 @@ interface LoginRepository {
     suspend fun saveUser(user: UserEntity)
     suspend fun signIn(email: String, pass: String)
     suspend fun googleSignIn(idToken: String)
+    suspend fun completeGoogleOnboarding(password: String, address: String)
+    suspend fun signOut()
     fun getLastEmail(): String
     fun saveLastEmail(email: String)
     fun isDarkTheme(): Flow<Boolean>

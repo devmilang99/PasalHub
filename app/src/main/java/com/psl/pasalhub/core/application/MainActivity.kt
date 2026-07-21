@@ -1,50 +1,74 @@
 package com.psl.pasalhub.core.application
 
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.psl.pasalhub.ai.presentation.AiSearchViewModel
 import com.psl.pasalhub.ai.presentation.AISearchScreen
+import com.psl.pasalhub.ai.presentation.AiSearchViewModel
 import com.psl.pasalhub.auth.forgotpassword.viewmodel.ForgotPasswordViewModel
 import com.psl.pasalhub.auth.login.viewmodel.LoginViewModel
 import com.psl.pasalhub.auth.register.viewmodel.RegisterViewModel
+import com.psl.pasalhub.core.application.domain.AppError
+import com.psl.pasalhub.core.application.presentation.AppViewModel
+import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.cart.ui.OrderReviewScreen
 import com.psl.pasalhub.dashboard.cart.viewmodel.CartViewModel
 import com.psl.pasalhub.dashboard.home.viewmodel.HomeViewModel
 import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
-import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
 import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.products.ui.ProductDetailScreen
+import com.psl.pasalhub.dashboard.products.viewmodel.ProductDetailViewModel
+import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
 import com.psl.pasalhub.dashboard.ui.DashboardScreen
 import com.psl.pasalhub.initial.presentation.InitialViewModel
-import com.psl.pasalhub.initial.presentation.splash.SplashScreen
 import com.psl.pasalhub.initial.presentation.onboarding.OnboardingScreen
 import com.psl.pasalhub.initial.presentation.permission.PermissionScreen
+import com.psl.pasalhub.initial.presentation.splash.SplashScreen
 import com.psl.pasalhub.initial.presentation.theme.ThemeSelectionScreen
 import com.psl.pasalhub.ui.theme.PasalHubTheme
 import com.psl.pasalhub.ui.theme.ProvideDimens
-import com.psl.pasalhub.core.viewmodel.MainViewModel
-import com.psl.pasalhub.core.application.presentation.AppViewModel
-import com.psl.pasalhub.dashboard.products.ui.ProductDetailScreen
-import com.psl.pasalhub.dashboard.products.viewmodel.ProductDetailViewModel
-
-
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -60,7 +84,8 @@ class MainActivity : ComponentActivity() {
         val initialViewModel: InitialViewModel by viewModels()
 
         setContent {
-            val isDarkTheme by appViewModel.isDarkTheme.collectAsState()
+            val isDarkTheme by appViewModel.isDarkTheme.collectAsStateWithLifecycle()
+            val globalError by appViewModel.globalError.collectAsStateWithLifecycle()
             val windowSizeClass = calculateWindowSizeClass(this)
 
             PasalHubTheme(darkTheme = isDarkTheme) {
@@ -68,13 +93,93 @@ class MainActivity : ComponentActivity() {
                     Surface(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        PasalHubNavHost(
-                            mainViewModel = mainViewModel,
-                            appViewModel = appViewModel,
-                            initialViewModel = initialViewModel
-                        )
+                        Box {
+                            PasalHubNavHost(
+                                mainViewModel = mainViewModel,
+                                appViewModel = appViewModel,
+                                initialViewModel = initialViewModel
+                            )
+
+                            globalError?.let { error ->
+                                GlobalErrorOverlay(
+                                    error = error,
+                                    onRetry = {
+                                        appViewModel.setError(null)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalErrorOverlay(
+    error: AppError,
+    onRetry: () -> Unit
+) {
+    val (icon, title, message) = when (error) {
+        is AppError.Network -> Triple(
+            Icons.Default.WifiOff,
+            "No Connection",
+            error.message
+        )
+
+        is AppError.Database -> Triple(
+            Icons.Default.Storage,
+            "System Error",
+            error.message
+        )
+
+        is AppError.Generic -> Triple(
+            Icons.Default.Error,
+            error.title,
+            error.message
+        )
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Dismiss Error")
             }
         }
     }
@@ -112,9 +217,21 @@ fun PasalHubNavHost(
                     val isThemeSet = initialViewModel.isThemeSet.value
                     val currentUser = initialViewModel.currentUser.value
 
+                    // Debug log to trace navigation decisions
+                    android.util.Log.d(
+                        "PasalHubNav",
+                        "Splash -> OnboardingDone: $isOnboardingDone, FlowCompleted: $isFlowCompleted, User: ${currentUser?.email}"
+                    )
+
                     if (currentUser?.isRemembered == true) {
-                        navController.navigate("dashboard?startTab=0") {
-                            popUpTo("splash") { inclusive = true }
+                        if (currentUser.isGoogleUser && !currentUser.isProfileComplete) {
+                            navController.navigate("google_onboarding") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate("dashboard?startTab=0") {
+                                popUpTo("splash") { inclusive = true }
+                            }
                         }
                     } else if (isFlowCompleted) {
                         navController.navigate("login") {
@@ -128,8 +245,13 @@ fun PasalHubNavHost(
                         navController.navigate("permission") {
                             popUpTo("splash") { inclusive = true }
                         }
-                    } else {
+                    } else if (!isThemeSet) {
                         navController.navigate("theme_selection") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    } else {
+                        // Fallback to login if we can't decide but onboarding is done
+                        navController.navigate("login") {
                             popUpTo("splash") { inclusive = true }
                         }
                     }
@@ -172,18 +294,47 @@ fun PasalHubNavHost(
 
         composable("login") {
             val loginViewModel: LoginViewModel = hiltViewModel()
+            val scope = rememberCoroutineScope()
+
             com.psl.pasalhub.auth.login.ui.LoginScreen(
                 viewModel = loginViewModel,
                 onNavigateToRegister = {
                     navController.navigate("register")
                 },
                 onNavigateToDashboard = {
-                    navController.navigate("dashboard?startTab=0") {
-                        popUpTo("login") { inclusive = true }
+                    scope.launch {
+                        // Wait for the user profile to be synchronized from the DB
+                        val user = loginViewModel.currentUser.filterNotNull().first()
+                        if (user.isGoogleUser && !user.isProfileComplete) {
+                            navController.navigate("google_onboarding") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate("dashboard?startTab=0") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
                     }
                 },
                 onNavigateToForgotPassword = {
                     navController.navigate("forgot_password")
+                }
+            )
+        }
+
+        composable("google_onboarding") {
+            val loginViewModel: LoginViewModel = hiltViewModel()
+            com.psl.pasalhub.auth.login.ui.GoogleOnboardingScreen(
+                viewModel = loginViewModel,
+                onNavigateToDashboard = {
+                    navController.navigate("dashboard?startTab=0") {
+                        popUpTo("google_onboarding") { inclusive = true }
+                    }
+                },
+                onExit = {
+                    navController.navigate("login") {
+                        popUpTo("google_onboarding") { inclusive = true }
+                    }
                 }
             )
         }
@@ -267,8 +418,8 @@ fun PasalHubNavHost(
 
         composable("order_review?subtotal={subtotal}&tax={tax}&discount={discount}&total={total}&voucher={voucher}&paymentMethod={paymentMethod}&address={address}&selectedIds={selectedIds}") { backStackEntry ->
             val cartViewModel: CartViewModel = hiltViewModel()
-            val cartItems by cartViewModel.cartItems.collectAsState()
-            val isDark by appViewModel.isDarkTheme.collectAsState()
+            val cartItems by cartViewModel.cartItems.collectAsStateWithLifecycle()
+            val isDark by appViewModel.isDarkTheme.collectAsStateWithLifecycle()
             val context = androidx.compose.ui.platform.LocalContext.current
 
             val subtotal = backStackEntry.arguments?.getString("subtotal")?.toDoubleOrNull() ?: 0.0
@@ -315,7 +466,7 @@ fun PasalHubNavHost(
         composable("product_detail/{productId}") { backStackEntry ->
             val productId =
                 backStackEntry.arguments?.getString("productId")?.toIntOrNull()
-            val productsState by mainViewModel.homeProductsState.collectAsState()
+            val productsState by mainViewModel.homeProductsState.collectAsStateWithLifecycle()
             val product = when (productsState) {
                 is Resource.Success -> (productsState as Resource.Success).data.find { it.id == productId }
                 else -> null

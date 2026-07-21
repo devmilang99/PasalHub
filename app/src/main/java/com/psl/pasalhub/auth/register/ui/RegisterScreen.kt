@@ -5,17 +5,55 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,21 +61,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.psl.pasalhub.R
 import com.psl.pasalhub.auth.register.viewmodel.RegisterViewModel
 import com.psl.pasalhub.core.application.utils.screens.AuthDialogState
+import com.psl.pasalhub.core.application.utils.screens.ModernTextField
 import com.psl.pasalhub.core.application.utils.screens.PasalHubAuthDialog
 import com.psl.pasalhub.core.application.utils.screens.PasalHubBackground
+import com.psl.pasalhub.core.application.utils.screens.PasswordRequirements
 import com.psl.pasalhub.ui.theme.LocalDimens
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -385,130 +423,6 @@ fun RegisterScreen(
                 state = state,
 
                 )
-        }
-    }
-}
-
-@Composable
-fun PasswordRequirements(password: String) {
-    val requirements = listOf(
-        "At least 8 characters" to (password.length >= 8),
-        "At least one uppercase" to password.any { it.isUpperCase() },
-        "At least one number" to password.any { it.isDigit() },
-        "At least one special char" to password.any { !it.isLetterOrDigit() }
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        requirements.forEach { (text, isValid) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = if (isValid) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = if (isValid) Color(0xFF4ADE80) else MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = 0.5f
-                    )
-                )
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isValid) Color(0xFF4ADE80) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ModernTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    testTag: String = "",
-    placeholder: String? = null,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    readOnly: Boolean = false,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    isError: Boolean = false,
-    errorMessage: String? = null
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label, style = MaterialTheme.typography.bodyMedium) },
-            placeholder = placeholder?.let {
-                {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                )
-            },
-            trailingIcon = if (isError) {
-                {
-                    Icon(
-                        Icons.Default.Error,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            } else {
-                trailingIcon
-            },
-            modifier = modifier
-                .fillMaxWidth()
-                .testTag(testTag),
-            shape = RoundedCornerShape(LocalDimens.current.cardCorner),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                errorBorderColor = MaterialTheme.colorScheme.error
-            ),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = keyboardType,
-                imeAction = ImeAction.Next
-            ),
-            visualTransformation = visualTransformation,
-            singleLine = singleLine,
-            minLines = minLines,
-            readOnly = readOnly,
-            interactionSource = interactionSource,
-            isError = isError
-        )
-        if (isError && errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(start = 12.dp, top = 2.dp)
-            )
         }
     }
 }

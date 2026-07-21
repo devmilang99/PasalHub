@@ -13,7 +13,8 @@ import com.psl.pasalhub.BuildConfig
         FavoriteEntity::class
     ],
     version = BuildConfig.DATABASE_VERSION,
-    exportSchema = true
+    exportSchema = true,
+    autoMigrations = []
 )
 abstract class AppDatabase : RoomDatabase() {
 

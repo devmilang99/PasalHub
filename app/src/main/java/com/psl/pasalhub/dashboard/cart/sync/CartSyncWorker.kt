@@ -1,12 +1,14 @@
 package com.psl.pasalhub.dashboard.cart.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.CartItem
 import com.psl.pasalhub.core.database.data.ProductDao
+import com.psl.pasalhub.core.database.data.UserDao
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import io.github.jan.supabase.SupabaseClient
@@ -20,24 +22,39 @@ class CartSyncWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val supabaseClient: SupabaseClient,
     private val cartDao: CartDao,
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    private val userDao: UserDao
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        val user = supabaseClient.auth.currentUserOrNull() ?: return Result.failure()
+        Log.d("CartSyncWorker", "Starting cart sync...")
+        val sessionUser = supabaseClient.auth.currentUserOrNull()
+
+        if (sessionUser == null) {
+            Log.w("CartSyncWorker", "No Supabase session found. Sync aborted.")
+            return Result.failure()
+        }
+
+        val localUser = userDao.getUser().first()
+        if (localUser == null || localUser.id != sessionUser.id) {
+            Log.w("CartSyncWorker", "Local user mismatch or missing. Sync aborted.")
+            return Result.failure()
+        }
+
+        Log.d("CartSyncWorker", "Syncing for user: ${sessionUser.email}")
 
         return try {
-            // 1. Fetch Remote Cart
-            val remoteCart = supabaseClient.postgrest["cart"]
-                .select {
-                    filter {
-                        eq("user_id", user.id)
+            // 1. Restore from Supabase if never synced
+            if (!localUser.hasSyncedCart) {
+                Log.d("CartSyncWorker", "First sync: Restoring from Supabase backup...")
+                val remoteCart = supabaseClient.postgrest["cart"]
+                    .select {
+                        filter {
+                            eq("user_id", sessionUser.id)
+                        }
                     }
-                }
-                .decodeList<RemoteCartItem>()
+                    .decodeList<RemoteCartItem>()
 
-            // 2. Update Local Database from Remote
-            if (remoteCart.isNotEmpty()) {
                 remoteCart.forEach { remoteItem ->
                     val product = productDao.getProductById(remoteItem.product_id)
                     if (product != null) {
@@ -49,32 +66,66 @@ class CartSyncWorker @AssistedInject constructor(
                             category = product.category ?: "General",
                             image = product.image ?: "",
                             quantity = remoteItem.quantity,
-                            seller = "Sync'd Store" // Or fetch seller if available
+                            seller = "Sync'd Store",
+                            updatedAt = remoteItem.updated_at
                         )
                         cartDao.addToCart(localItem)
                     }
                 }
+                userDao.updateSyncStatus(localUser.id, true)
+                Log.d("CartSyncWorker", "Restore complete. Restored ${remoteCart.size} items.")
             }
 
-            // 3. Sync Local Cart to Remote
+            // 2. Sync Local -> Remote (Backup)
             val localCart = cartDao.getCartItems().first()
             val remoteData = localCart.map {
-                mapOf(
-                    "user_id" to user.id,
-                    "product_id" to it.productId,
-                    "quantity" to it.quantity
+                RemoteCartItem(
+                    user_id = sessionUser.id,
+                    product_id = it.productId,
+                    quantity = it.quantity,
+                    updated_at = it.updatedAt
                 )
             }
 
             if (remoteData.isNotEmpty()) {
-                // Upsert to Supabase
+                Log.d("CartSyncWorker", "Upserting ${remoteData.size} items to Supabase...")
                 supabaseClient.postgrest["cart"].upsert(remoteData) {
-                    onConflict = "user_id, product_id"
+                    onConflict = "user_id,product_id"
                 }
             }
+
+            // 3. Cleanup Remote (Remove items that are no longer in local cart)
+            // Fetch remote again to see what's there
+            val currentRemoteCart = supabaseClient.postgrest["cart"]
+                .select {
+                    filter {
+                        eq("user_id", sessionUser.id)
+                    }
+                }
+                .decodeList<RemoteCartItem>()
+
+            val localProductIds = localCart.map { it.productId }.toSet()
+            val itemsToRemove = currentRemoteCart.filter { it.product_id !in localProductIds }
+
+            if (itemsToRemove.isNotEmpty()) {
+                Log.d(
+                    "CartSyncWorker",
+                    "Removing ${itemsToRemove.size} items from Supabase backup (Syncing deletions/checkouts)..."
+                )
+                itemsToRemove.forEach { item ->
+                    supabaseClient.postgrest["cart"].delete {
+                        filter {
+                            eq("user_id", sessionUser.id)
+                            eq("product_id", item.product_id)
+                        }
+                    }
+                }
+            }
+
+            Log.d("CartSyncWorker", "Sync successful!")
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CartSyncWorker", "Sync failed: ${e.message}", e)
             Result.retry()
         }
     }
@@ -83,6 +134,7 @@ class CartSyncWorker @AssistedInject constructor(
     data class RemoteCartItem(
         val user_id: String,
         val product_id: Int,
-        val quantity: Int
+        val quantity: Int,
+        val updated_at: Long = System.currentTimeMillis()
     )
 }

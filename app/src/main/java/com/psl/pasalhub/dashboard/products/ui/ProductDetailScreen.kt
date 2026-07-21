@@ -1,10 +1,22 @@
 package com.psl.pasalhub.dashboard.products.ui
 
-import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -13,11 +25,37 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import kotlinx.coroutines.flow.debounce
-import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.LocalMall
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,18 +67,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import coil.compose.AsyncImage
-import com.psl.pasalhub.core.database.data.CartItem
-import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.products.viewmodel.ProductDetailViewModel
-import com.psl.pasalhub.dashboard.products.repository.Resource
 import com.psl.pasalhub.core.application.utils.screens.BuyNowBottomSheet
 import com.psl.pasalhub.core.application.utils.screens.ProductReview
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
 import com.psl.pasalhub.core.application.utils.screens.getMockReviewsForCategory
+import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
+import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.products.viewmodel.ProductDetailViewModel
 import com.psl.pasalhub.ui.theme.LocalDimens
+import kotlinx.coroutines.flow.debounce
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.FlowPreview::class)
 @Composable
@@ -57,6 +95,7 @@ fun ProductDetailScreen(
     var showBuyNowSheet by remember { mutableStateOf(false) }
     var buyNowVoucher by remember { mutableStateOf(Pair("None", 0.0)) }
     var buyNowPaymentMethod by remember { mutableStateOf("E-sewa") }
+    var quantity by remember { mutableIntStateOf(1) }
 
     val favoriteIds by detailViewModel.favoriteIds.collectAsState(initial = emptySet())
     val isFavorited = favoriteIds.contains(product.id)
@@ -128,7 +167,7 @@ fun ProductDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
-                        onClick = { detailViewModel.addToCart(product) },
+                        onClick = { detailViewModel.addToCart(product, quantity) },
                         modifier = Modifier
                             .weight(1f)
                             .height(dimens.buttonHeight),
@@ -275,7 +314,11 @@ fun ProductDetailScreen(
                                 .weight(1.2f)
                                 .verticalScroll(rememberScrollState())
                         ) {
-                            ProductInfoSection(product)
+                            ProductInfoSection(
+                                product = product,
+                                quantity = quantity,
+                                onQuantityChange = { quantity = it }
+                            )
                             Spacer(modifier = Modifier.height(dimens.large))
                             ReviewSection(reviews)
                             if (similarProducts.isNotEmpty()) {
@@ -323,7 +366,11 @@ fun ProductDetailScreen(
                             }
                         }
                         Spacer(modifier = Modifier.height(dimens.large))
-                        ProductInfoSection(product)
+                        ProductInfoSection(
+                            product = product,
+                            quantity = quantity,
+                            onQuantityChange = { quantity = it }
+                        )
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = dimens.medium),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
@@ -344,16 +391,21 @@ fun ProductDetailScreen(
             if (showBuyNowSheet) {
                 BuyNowBottomSheet(
                     product = product,
+                    quantity = quantity,
                     selectedVoucher = buyNowVoucher,
                     onVoucherChange = { buyNowVoucher = it },
                     selectedPaymentMethod = buyNowPaymentMethod,
                     onPaymentMethodChange = { buyNowPaymentMethod = it },
                     onDismiss = { showBuyNowSheet = false },
                     onConfirmCheckout = {
-                        val discounted = (product.price - buyNowVoucher.second).coerceAtLeast(0.0)
+                        val subtotal = product.price * quantity
+                        val discountAmount =
+                            if (buyNowVoucher.first == "PASALSAVINGS" && subtotal < (30.0 * quantity)) subtotal else buyNowVoucher.second
+                        val discounted = (subtotal - discountAmount).coerceAtLeast(0.0)
                         detailViewModel.placeDirectOrder(
                             context,
                             product,
+                            quantity,
                             discounted * 1.05,
                             buyNowPaymentMethod,
                             buyNowVoucher.first
@@ -370,7 +422,11 @@ fun ProductDetailScreen(
 }
 
 @Composable
-fun ProductInfoSection(product: ProductDto) {
+fun ProductInfoSection(
+    product: ProductDto,
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit
+) {
     val dimens = LocalDimens.current
     Column {
         Box(
@@ -398,6 +454,26 @@ fun ProductInfoSection(product: ProductDto) {
             lineHeight = if (dimens.padding > 24.dp) 40.sp else 32.sp
         )
 
+        Spacer(modifier = Modifier.height(dimens.extraSmall))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                Icons.Default.Star,
+                null,
+                tint = Color(0xFFFFB200),
+                modifier = Modifier.size(if (dimens.padding > 24.dp) 20.dp else 16.dp)
+            )
+            Text(
+                "4.8 (124 reviews)",
+                fontSize = if (dimens.padding > 24.dp) 14.sp else 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         Spacer(modifier = Modifier.height(dimens.medium))
 
         Row(
@@ -412,22 +488,7 @@ fun ProductInfoSection(product: ProductDto) {
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    Icons.Default.Star,
-                    null,
-                    tint = Color(0xFFFFB200),
-                    modifier = Modifier.size(if (dimens.padding > 24.dp) 24.dp else 20.dp)
-                )
-                Text(
-                    "4.8 (124 reviews)",
-                    fontSize = if (dimens.padding > 24.dp) 16.sp else 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            QuantitySelector(quantity = quantity, onQuantityChange = onQuantityChange)
         }
 
         HorizontalDivider(
@@ -447,6 +508,55 @@ fun ProductInfoSection(product: ProductDto) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 24.sp
         )
+    }
+}
+
+@Composable
+fun QuantitySelector(
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit
+) {
+    val dimens = LocalDimens.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimens.small)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(dimens.cardCorner))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+        ) {
+            IconButton(
+                onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+                modifier = Modifier.size(if (dimens.padding > 24.dp) 32.dp else 28.dp)
+            ) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Decrease Quantity",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Text(
+                text = quantity.toString(),
+                fontSize = if (dimens.padding > 24.dp) 16.sp else 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(horizontal = dimens.small)
+            )
+
+            IconButton(
+                onClick = { onQuantityChange(quantity + 1) },
+                modifier = Modifier.size(if (dimens.padding > 24.dp) 32.dp else 28.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Increase Quantity",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 

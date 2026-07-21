@@ -4,7 +4,18 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,11 +25,43 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.rounded.AssignmentReturn
 import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.automirrored.rounded.HelpCenter
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.LocalShipping
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.RateReview
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.SupportAgent
+import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,14 +76,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.products.repository.Resource
-import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
-import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
 import com.psl.pasalhub.core.application.utils.screens.MyReviewsScreen
 import com.psl.pasalhub.core.application.utils.screens.PasalHubAlertDialog
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
+import com.psl.pasalhub.core.networking.remote.ProductDto
+import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
+import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
 import com.psl.pasalhub.ui.theme.LocalDimens
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -52,12 +96,12 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onProductClick: (ProductDto) -> Unit
 ) {
-    val currentUser by viewModel.currentUser.collectAsState()
-    val favoriteIds by viewModel.favoriteIds.collectAsState()
-    val productResource by viewModel.homeProductsState.collectAsState()
-    val storedPassword by viewModel.userPassword.collectAsState()
-    val memberPoints by viewModel.memberPoints.collectAsState()
-    val isDark by viewModel.isDarkTheme.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
+    val productResource by viewModel.homeProductsState.collectAsStateWithLifecycle()
+    val storedPassword by viewModel.userPassword.collectAsStateWithLifecycle()
+    val memberPoints by viewModel.memberPoints.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
     val dimens = LocalDimens.current
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp
@@ -220,7 +264,7 @@ fun ProfileScreen(
             // Main Account Actions List Card
             SectionHeader("ACCOUNT SETTINGS")
             PremiumMenuCard(isDark) {
-                if (currentUser?.isGoogleUser != true) {
+                if (currentUser?.isGoogleUser == false) {
                     PremiumMenuItem(
                         icon = Icons.Rounded.Security,
                         title = "Change Password",
@@ -257,9 +301,11 @@ fun ProfileScreen(
         }
 
         // --- 3. Footer Section ---
-        Box(modifier = Modifier
-            .padding(dimens.padding)
-            .padding(bottom = 8.dp)) {
+        Box(
+            modifier = Modifier
+                .padding(dimens.padding)
+                .padding(bottom = 8.dp)
+        ) {
             Button(
                 onClick = { showLogoutDialog = true },
                 modifier = Modifier
@@ -291,9 +337,11 @@ fun ProfileScreen(
             dragHandle = { BottomSheetDefaults.DragHandle() },
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
         ) {
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
                 Text(
                     "My Wishlist",
                     style = MaterialTheme.typography.headlineSmall,
@@ -392,12 +440,15 @@ fun ChangePasswordBottomSheet(
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
     val textColor = if (isDark) Color.White else Color(0xFF212529)
     val accentColor = MaterialTheme.colorScheme.primary
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = cardColor,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
     ) {
@@ -731,9 +782,11 @@ fun PremiumMenuCard(isDark: Boolean, content: @Composable ColumnScope.() -> Unit
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
             content()
         }
     }

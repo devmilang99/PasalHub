@@ -1,33 +1,83 @@
 package com.psl.pasalhub.core.application.utils.screens
 
-import android.annotation.SuppressLint
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,12 +87,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 import com.psl.pasalhub.core.application.utils.NetworkUtils
-import com.psl.pasalhub.core.database.data.CartItem
 import com.psl.pasalhub.core.networking.remote.ProductDto
-import java.util.*
+import java.util.Locale
 import kotlin.math.round
 
 fun formatPrice(price: Double): String {
@@ -509,6 +556,7 @@ fun parseItemsSummary(itemsSummary: String): List<ParsedOrderItem> {
 @Composable
 fun BuyNowBottomSheet(
     product: ProductDto,
+    quantity: Int = 1,
     selectedVoucher: Pair<String, Double>,
     onVoucherChange: (Pair<String, Double>) -> Unit,
     selectedPaymentMethod: String,
@@ -523,9 +571,9 @@ fun BuyNowBottomSheet(
     val vouchers = listOf(Pair("None", 0.0), Pair("PASALPREMIUM", 10.0), Pair("PASALSAVINGS", 30.0))
     var isVoucherExpanded by remember { mutableStateOf(false) }
 
-    val subtotal = product.price
+    val subtotal = product.price * quantity
     val discountAmount =
-        if (selectedVoucher.first == "PASALSAVINGS" && subtotal < 30.0) subtotal else selectedVoucher.second
+        if (selectedVoucher.first == "PASALSAVINGS" && subtotal < (30.0 * quantity)) subtotal else selectedVoucher.second
     val discountedSubtotal = (subtotal - discountAmount).coerceAtLeast(0.0)
     val taxAmount = discountedSubtotal * 0.05
     val finalTotal = discountedSubtotal + taxAmount
@@ -601,12 +649,24 @@ fun BuyNowBottomSheet(
                             color = Color(0xFF4CAF50),
                             letterSpacing = 1.sp
                         )
-                        Text(
-                            text = formatPrice(product.price),
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Black,
-                            color = textColor
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = formatPrice(product.price),
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Black,
+                                color = textColor
+                            )
+                            Text(
+                                text = "Qty: $quantity",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = mutedTextColor
+                            )
+                        }
                     }
                 }
             }

@@ -1,6 +1,11 @@
 package com.psl.pasalhub.core.database.data
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -16,6 +21,15 @@ interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
+
+    @Query("UPDATE users SET hasSyncedCart = :hasSynced WHERE id = :userId")
+    suspend fun updateSyncStatus(userId: String, hasSynced: Boolean)
+
+    @Query("UPDATE users SET hasSyncedFavorites = :hasSynced WHERE id = :userId")
+    suspend fun updateFavoriteSyncStatus(userId: String, hasSynced: Boolean)
+
+    @Query("UPDATE users SET lastFullSyncTime = :timestamp WHERE id = :userId")
+    suspend fun updateLastSyncTime(userId: String, timestamp: Long)
 
     @Query("DELETE FROM users")
     suspend fun clearUser()

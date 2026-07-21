@@ -3,6 +3,7 @@ package com.psl.pasalhub.initial.data
 import android.content.Context
 import androidx.core.content.edit
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.initial.domain.InitialRepository
@@ -11,14 +12,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class InitialRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context,
     private val userDao: UserDao,
-    private val appPrefs: AppPreferencesRepository
+    private val appPrefs: AppPreferencesRepository,
+    private val authRepository: SupabaseAuthRepository
 ) : InitialRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -31,11 +32,22 @@ class InitialRepositoryImpl @Inject constructor(
     private val _notificationGranted =
         MutableStateFlow(prefs.getBoolean("perm_notification", false))
 
-    override fun isOnboardingCompleted(): Flow<Boolean> = _onboardingCompleted.asStateFlow()
+    override fun isOnboardingCompleted(): Flow<Boolean> = combine(
+        _onboardingCompleted.asStateFlow(),
+        userDao.getUser().map { it?.isOnboardingDone ?: false }
+    ) { localFlag, userFlag ->
+        localFlag || userFlag
+    }
 
     override suspend fun completeOnboarding() {
         prefs.edit { putBoolean("onboarding_done", true) }
         _onboardingCompleted.value = true
+        // Also update in cloud if user is logged in (unlikely for pure new user, but good for consistency)
+        try {
+            authRepository.updateOnboardingStatus(true)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun isThemeSet(): Flow<Boolean> = appPrefs.isThemeSet()

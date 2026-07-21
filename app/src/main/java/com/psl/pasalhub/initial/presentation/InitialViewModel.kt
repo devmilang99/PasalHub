@@ -2,19 +2,34 @@ package com.psl.pasalhub.initial.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.psl.pasalhub.core.application.domain.AppError
+import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.initial.domain.InitialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class InitialViewModel @Inject constructor(
-    private val repository: InitialRepository
+    private val repository: InitialRepository,
+    private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            try {
+                // Perform a simple query to verify DB integrity
+                repository.getUser().first()
+            } catch (e: Exception) {
+                appPrefs.emitGlobalError(AppError.Database("Critical: Database file may be corrupted. ${e.localizedMessage}"))
+            }
+        }
+    }
 
     val onboardingCompleted: StateFlow<Boolean> = repository.isOnboardingCompleted()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)

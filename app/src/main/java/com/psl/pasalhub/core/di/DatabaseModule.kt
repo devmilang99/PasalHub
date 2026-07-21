@@ -26,7 +26,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "pasalhub_db"
-        ).fallbackToDestructiveMigration(true).build()
+        )
+            .fallbackToDestructiveMigration(true) // Keep this for version 1 dev, will replace with false once stable
+            .build()
     }
 
     @Provides

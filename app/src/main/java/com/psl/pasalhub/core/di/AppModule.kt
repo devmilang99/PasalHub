@@ -7,6 +7,7 @@ import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.OrderDao
 import com.psl.pasalhub.core.database.data.ProductDao
 import com.psl.pasalhub.core.database.data.UserDao
+import com.psl.pasalhub.core.sync.SyncManager
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
 import dagger.Module
 import dagger.Provides
@@ -26,9 +27,10 @@ object AppModule {
         cartDao: CartDao,
         orderDao: OrderDao,
         productDao: ProductDao,
+        syncManager: SyncManager,
         @ApplicationContext context: Context
     ): ProductRepository {
-        return ProductRepository(userDao, cartDao, orderDao, productDao, context)
+        return ProductRepository(userDao, cartDao, orderDao, productDao, syncManager, context)
     }
 
     @Provides

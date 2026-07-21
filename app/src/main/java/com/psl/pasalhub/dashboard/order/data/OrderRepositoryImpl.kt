@@ -1,23 +1,27 @@
 package com.psl.pasalhub.dashboard.order.data
 
 import android.content.Context
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
-import com.psl.pasalhub.dashboard.order.domain.OrderRepository
 import com.psl.pasalhub.core.database.data.OrderDao
 import com.psl.pasalhub.core.database.data.OrderEntity
+import com.psl.pasalhub.core.sync.SyncManager
+import com.psl.pasalhub.core.sync.SyncType
+import com.psl.pasalhub.dashboard.order.domain.OrderRepository
+import com.psl.pasalhub.dashboard.order.worker.OrderTrackingWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-
-import androidx.work.*
-import com.psl.pasalhub.dashboard.order.sync.OrderSyncWorker
-import com.psl.pasalhub.dashboard.order.worker.OrderTrackingWorker
 import javax.inject.Inject
 
 class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
     @ApplicationContext private val context: Context,
-    private val appPrefs: AppPreferencesRepository
+    private val appPrefs: AppPreferencesRepository,
+    private val syncManager: SyncManager
 ) : OrderRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -63,13 +67,7 @@ class OrderRepositoryImpl @Inject constructor(
     }
 
     private fun scheduleOrderSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<OrderSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("order_sync", ExistingWorkPolicy.REPLACE, syncRequest)
+        syncManager.triggerSync(SyncType.ORDERS, immediate = true)
     }
 
     override suspend fun setOrderPause(orderId: Int, isPaused: Boolean) {

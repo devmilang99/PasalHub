@@ -10,4 +10,6 @@ interface SupabaseAuthRepository {
     suspend fun signOut()
     suspend fun googleSignIn(idToken: String)
     suspend fun updateProfile(name: String, address: String, dateOfBirth: String)
+    suspend fun updateOnboardingStatus(done: Boolean)
+    suspend fun completeGoogleOnboarding(password: String, address: String)
 }

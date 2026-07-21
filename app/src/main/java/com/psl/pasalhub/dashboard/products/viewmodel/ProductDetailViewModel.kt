@@ -53,12 +53,12 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
-    fun addToCart(product: ProductDto) {
+    fun addToCart(product: ProductDto, quantity: Int) {
         viewModelScope.launch {
             val cartItems = repository.getCartItems().first()
             val existing = cartItems.find { it.productId == product.id }
             if (existing != null) {
-                repository.updateCartItem(existing.copy(quantity = existing.quantity + 1))
+                repository.updateCartItem(existing.copy(quantity = existing.quantity + quantity))
             } else {
                 val sellerName = when (product.category.lowercase()) {
                     "electronics" -> "Tech Gear Hub"
@@ -74,18 +74,19 @@ class ProductDetailViewModel @Inject constructor(
                         description = product.description,
                         category = product.category,
                         image = product.image,
-                        quantity = 1,
+                        quantity = quantity,
                         seller = sellerName
                     )
                 )
             }
-            appPrefs.emitNotification("Successfully added ${product.title} to your cart!")
+            appPrefs.emitNotification("Successfully added $quantity x ${product.title} to your cart!")
         }
     }
 
     fun placeDirectOrder(
         context: Context,
         product: ProductDto,
+        quantity: Int,
         finalTotal: Double,
         paymentMethod: String,
         appliedVoucher: String
@@ -95,9 +96,9 @@ class ProductDetailViewModel @Inject constructor(
             val userAddress = user?.address ?: "Default Address, New York"
             val order = OrderEntity(
                 totalAmount = finalTotal,
-                itemsSummary = "${product.title}|${product.image} x1 (Direct Buy via $paymentMethod${if (appliedVoucher.isNotEmpty()) " [$appliedVoucher]" else ""})",
+                itemsSummary = "${product.title}|${product.image} x$quantity (Direct Buy via $paymentMethod${if (appliedVoucher.isNotEmpty()) " [$appliedVoucher]" else ""})",
                 status = "Placing",
-                quantity = 1,
+                quantity = quantity,
                 price = product.price,
                 address = userAddress,
                 seller = "${product.category.replaceFirstChar { it.uppercase() }} Luxury Direct",

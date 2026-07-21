@@ -3,8 +3,8 @@ package com.psl.pasalhub.auth.login.data
 import android.content.Context
 import androidx.core.content.edit
 import com.psl.pasalhub.auth.login.domain.LoginRepository
-import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +32,14 @@ class LoginRepositoryImpl @Inject constructor(
 
     override suspend fun googleSignIn(idToken: String) {
         supabaseAuthRepository.googleSignIn(idToken)
+    }
+
+    override suspend fun completeGoogleOnboarding(password: String, address: String) {
+        supabaseAuthRepository.completeGoogleOnboarding(password, address)
+    }
+
+    override suspend fun signOut() {
+        supabaseAuthRepository.signOut()
     }
 
     override fun getLastEmail(): String {

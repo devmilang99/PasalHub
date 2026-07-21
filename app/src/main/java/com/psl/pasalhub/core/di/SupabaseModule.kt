@@ -1,12 +1,16 @@
 package com.psl.pasalhub.core.di
 
+import android.content.Context
 import com.psl.pasalhub.BuildConfig
+import com.russhwolf.settings.SharedPreferencesSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.SettingsSessionManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -21,7 +25,13 @@ object SupabaseModule {
 
     @Provides
     @Singleton
-    fun provideSupabaseClient(): SupabaseClient {
+    fun provideSupabaseClient(@ApplicationContext context: Context): SupabaseClient {
+        val settings = SharedPreferencesSettings(
+            context.getSharedPreferences(
+                "supabase_session",
+                Context.MODE_PRIVATE
+            )
+        )
         return createSupabaseClient(
             supabaseUrl = BuildConfig.SUPABASE_URL.trim().removeSurrounding("\"")
                 .removeSurrounding("'"),
@@ -29,7 +39,9 @@ object SupabaseModule {
                 .removeSurrounding("'")
         ) {
             install(Postgrest)
-            install(Auth)
+            install(Auth) {
+                sessionManager = SettingsSessionManager(settings)
+            }
             defaultSerializer = KotlinXSerializer(Json {
                 ignoreUnknownKeys = true
                 coerceInputValues = true

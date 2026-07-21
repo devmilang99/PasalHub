@@ -12,5 +12,6 @@ data class ProductEntity(
     val price: Double,
     val description: String?,
     val category: String?,
-    val image: String?
+    val image: String?,
+    val updatedAt: Long = System.currentTimeMillis()
 )

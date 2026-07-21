@@ -1,12 +1,15 @@
 package com.psl.pasalhub.auth.login.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.psl.pasalhub.auth.login.domain.LoginRepository
 import com.psl.pasalhub.core.database.data.UserEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,5 +39,15 @@ class LoginViewModel @Inject constructor(
 
     suspend fun googleSignIn(idToken: String) {
         repository.googleSignIn(idToken)
+    }
+
+    suspend fun completeOnboarding(password: String, address: String) {
+        repository.completeGoogleOnboarding(password, address)
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            repository.signOut()
+        }
     }
 }

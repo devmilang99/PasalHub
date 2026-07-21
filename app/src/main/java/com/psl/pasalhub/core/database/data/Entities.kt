@@ -1,11 +1,13 @@
 package com.psl.pasalhub.core.database.data
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Entity(tableName = "users")
 @Serializable
+@Immutable
 data class UserEntity(
     @PrimaryKey val id: String, // Supabase UID
     val email: String,
@@ -14,19 +16,27 @@ data class UserEntity(
     val address: String,
     val isRemembered: Boolean = false,
     val isGoogleUser: Boolean = false,
-    val profileImage: String? = null
+    val profileImage: String? = null,
+    val isProfileComplete: Boolean = false,
+    val hasSyncedCart: Boolean = false,
+    val hasSyncedFavorites: Boolean = false,
+    val isOnboardingDone: Boolean = false,
+    val lastFullSyncTime: Long = 0L
 )
 
 @Entity(tableName = "favorites")
 @Serializable
+@Immutable
 data class FavoriteEntity(
     @PrimaryKey val productId: Int,
     val userId: String,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "cart_items")
 @Serializable
+@Immutable
 data class CartItem(
     @PrimaryKey val productId: Int,
     val title: String,
@@ -36,11 +46,13 @@ data class CartItem(
     val image: String,
     val quantity: Int = 1,
     val seller: String = "Official Store",
-    val isSynced: Boolean = true
+    val isSynced: Boolean = true,
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "orders")
 @Serializable
+@Immutable
 data class OrderEntity(
     @PrimaryKey(autoGenerate = true) val orderId: Int = 0,
     val date: Long = System.currentTimeMillis(),
@@ -56,5 +68,6 @@ data class OrderEntity(
     val review: String? = null,
     val progress: Int = 0,
     val isPaused: Boolean = false,
-    val isSynced: Boolean = true
+    val isSynced: Boolean = true,
+    val updatedAt: Long = System.currentTimeMillis()
 )

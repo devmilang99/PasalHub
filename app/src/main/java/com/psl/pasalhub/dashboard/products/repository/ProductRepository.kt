@@ -1,7 +1,10 @@
 package com.psl.pasalhub.dashboard.products.repository
 
 import android.content.Context
-import androidx.work.*
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.CartItem
 import com.psl.pasalhub.core.database.data.OrderDao
@@ -11,12 +14,13 @@ import com.psl.pasalhub.core.database.data.ProductEntity
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.cart.sync.CartSyncWorker
-import com.psl.pasalhub.dashboard.order.sync.OrderSyncWorker
+import com.psl.pasalhub.core.sync.SyncManager
+import com.psl.pasalhub.core.sync.SyncType
 import com.psl.pasalhub.dashboard.order.worker.OrderTrackingWorker
-import com.psl.pasalhub.dashboard.products.sync.SupabaseSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,14 +36,26 @@ class ProductRepository @Inject constructor(
     private val cartDao: CartDao,
     private val orderDao: OrderDao,
     private val productDao: ProductDao,
+    private val syncManager: SyncManager,
     @ApplicationContext private val context: Context
 ) {
+    private val FRESHNESS_THRESHOLD = 24 * 60 * 60 * 1000L // 24 hours
+
     fun getProducts(): Flow<Resource<List<ProductDto>>> = flow {
         emit(Resource.Loading)
+
+        val user = userDao.getUser().first()
+        val lastSync = user?.lastFullSyncTime ?: 0L
+        val isStale = System.currentTimeMillis() - lastSync > FRESHNESS_THRESHOLD
+
         productDao.getAllProducts().collect { entities ->
-            if (entities.isEmpty()) {
+            if (entities.isEmpty() || isStale) {
                 syncProducts()
-                emit(Resource.Loading)
+                if (entities.isEmpty()) {
+                    emit(Resource.Loading)
+                } else {
+                    emit(Resource.Success(entities.map { it.toDto() }))
+                }
             } else {
                 emit(Resource.Success(entities.map { it.toDto() }))
             }
@@ -55,19 +71,7 @@ class ProductRepository @Inject constructor(
     }
 
     private fun syncProducts() {
-        val syncRequest = OneTimeWorkRequestBuilder<SupabaseSyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
-            .build()
-
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "supabase_product_sync",
-            ExistingWorkPolicy.KEEP,
-            syncRequest
-        )
+        syncManager.triggerSync(SyncType.PRODUCTS)
     }
 
     private fun ProductEntity.toDto() = ProductDto(
@@ -100,24 +104,24 @@ class ProductRepository @Inject constructor(
 
     suspend fun addToCart(item: CartItem) {
         cartDao.addToCart(item)
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     suspend fun removeFromCart(productId: Int) {
         cartDao.getCartItems().first().find { it.productId == productId }?.let {
             cartDao.deleteCartItem(it)
         }
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     suspend fun updateCartItem(item: CartItem) {
         cartDao.updateCartItem(item)
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     suspend fun clearCart() {
         cartDao.clearCart()
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
     // Order operations
@@ -126,29 +130,9 @@ class ProductRepository @Inject constructor(
     suspend fun placeOrder(order: OrderEntity): Int {
         val id = orderDao.insertOrder(order)
         cartDao.clearCart()
-        scheduleOrderSync()
-        scheduleCartSync()
+        syncManager.triggerSync(SyncType.ORDERS, immediate = true)
+        syncManager.triggerSync(SyncType.CART, immediate = true)
         return id.toInt()
-    }
-
-    private fun scheduleCartSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<CartSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("cart_sync", ExistingWorkPolicy.REPLACE, syncRequest)
-    }
-
-    private fun scheduleOrderSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<OrderSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("order_sync", ExistingWorkPolicy.REPLACE, syncRequest)
     }
 
     fun scheduleOrderTracking(orderId: Int) {

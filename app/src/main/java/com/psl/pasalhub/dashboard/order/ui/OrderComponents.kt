@@ -1,27 +1,77 @@
 package com.psl.pasalhub.dashboard.order.ui
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.RateReview
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -32,9 +82,8 @@ import coil.compose.AsyncImage
 import com.psl.pasalhub.core.application.utils.screens.parseItemsSummary
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.ui.theme.PasalHubTheme
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
 
 @Composable
 fun ModernOrderCard(
@@ -72,29 +121,23 @@ fun ModernOrderCard(
     }
 
     val statusBgColor = when (order.status) {
-        "Placing" if timeLeft > 0 -> if (isDark) Color(0xFF2E1B1B) else Color(0xFFFFEBEE)
-        "Placed" -> if (isDark) Color(0xFF1E293B) else Color(0xFFE3F2FD)
-        "Packaging", "Packing" -> if (isDark) Color(0xFF1E293B) else Color(0xFFE0F2F1)
-        "Sent for Delivery", "On Way", "Shipping" -> if (isDark) Color(0xFF142B23) else Color(
-            0xFFE8F5E9
-        )
-
-        "Delivered", "Completed" -> if (isDark) Color(0xFF1E2E20) else Color(0xFFF1F8E9)
-        "Cancelled" -> if (isDark) Color(0xFF2E1B1B) else Color(0xFFFFEBEE)
-        else -> if (isDark) Color(0xFF2C2D30) else Color(0xFFECEFF1)
+        "Placing" if timeLeft > 0 -> PasalHubTheme.colors.error.copy(alpha = 0.15f)
+        "Placed" -> PasalHubTheme.colors.info.copy(alpha = 0.15f)
+        "Packaging", "Packing" -> PasalHubTheme.colors.info.copy(alpha = 0.15f)
+        "Sent for Delivery", "On Way", "Shipping" -> PasalHubTheme.colors.success.copy(alpha = 0.15f)
+        "Delivered", "Completed" -> PasalHubTheme.colors.success.copy(alpha = 0.15f)
+        "Cancelled" -> PasalHubTheme.colors.error.copy(alpha = 0.15f)
+        else -> PasalHubTheme.colors.outline.copy(alpha = 0.15f)
     }
 
     val statusTextColor = when (order.status) {
-        "Placing" if timeLeft > 0 -> if (isDark) Color(0xFFF87171) else Color(0xFFC62828)
-        "Placed" -> if (isDark) Color(0xFF38BDF8) else Color(0xFF1976D2)
-        "Packaging", "Packing" -> if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B)
-        "Sent for Delivery", "On Way", "Shipping" -> if (isDark) Color(0xFF4ADE80) else Color(
-            0xFF2E7D32
-        )
-
-        "Delivered", "Completed" -> if (isDark) Color(0xFF4ADE80) else Color(0xFF33691E)
-        "Cancelled" -> if (isDark) Color(0xFFF87171) else Color(0xFFC62828)
-        else -> if (isDark) Color.White else Color(0xFF455A64)
+        "Placing" if timeLeft > 0 -> PasalHubTheme.colors.error
+        "Placed" -> PasalHubTheme.colors.info
+        "Packaging", "Packing" -> PasalHubTheme.colors.info
+        "Sent for Delivery", "On Way", "Shipping" -> PasalHubTheme.colors.success
+        "Delivered", "Completed" -> PasalHubTheme.colors.success
+        "Cancelled" -> PasalHubTheme.colors.error
+        else -> PasalHubTheme.colors.textSecondary
     }
 
     val cardColor = MaterialTheme.colorScheme.surface
@@ -110,17 +153,19 @@ fun ModernOrderCard(
         colors = CardDefaults.cardColors(containerColor = cardColor),
         border = BorderStroke(1.dp, borderColor)
     ) {
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             if (order.status == "Placing" && timeLeft > 0) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = (if (isDark) Color(0xFF2E1B1B) else Color(0xFFFFEBEE)).copy(alpha = 0.5f),
-                    border = BorderStroke(1.dp, Color(0xFFF87171).copy(alpha = 0.2f))
+                    color = PasalHubTheme.colors.error.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, PasalHubTheme.colors.error.copy(alpha = 0.2f))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Row(
@@ -134,15 +179,15 @@ fun ModernOrderCard(
                                 CircularProgressIndicator(
                                     progress = { timeLeft / 10f },
                                     modifier = Modifier.fillMaxSize(),
-                                    color = Color(0xFFF87171),
+                                    color = PasalHubTheme.colors.error,
                                     strokeWidth = 3.dp,
-                                    trackColor = Color(0xFFF87171).copy(alpha = 0.15f),
+                                    trackColor = PasalHubTheme.colors.error.copy(alpha = 0.15f),
                                 )
                                 Text(
                                     text = timeLeft.toString(),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Color(0xFFF87171)
+                                    color = PasalHubTheme.colors.error
                                 )
                             }
 
@@ -151,12 +196,12 @@ fun ModernOrderCard(
                                     text = "Cancellation Window",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isDark) Color.White else Color(0xFFC62828)
+                                    color = PasalHubTheme.colors.error
                                 )
                                 Text(
                                     text = "This is a cancellation window and user can cancel in this window.",
                                     fontSize = 10.sp,
-                                    color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f),
+                                    color = textColor.copy(alpha = 0.6f),
                                     lineHeight = 14.sp
                                 )
                             }
@@ -173,7 +218,7 @@ fun ModernOrderCard(
                                 .fillMaxWidth()
                                 .height(40.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF87171),
+                                containerColor = PasalHubTheme.colors.error,
                                 contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(10.dp),
@@ -227,12 +272,13 @@ fun ModernOrderCard(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
-                            tint = if (isDark) Color(0xFF38BDF8) else Color(0xFF00796B),
+                            tint = PasalHubTheme.colors.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = order.address.split(",").first().trim(),
+                            text = order.address.ifEmpty { "Kathmandu, Nepal" }.split(",").first()
+                                .trim(),
                             fontSize = 11.sp,
                             color = mutedTextColor,
                             maxLines = 1,
@@ -362,7 +408,7 @@ fun ModernOrderCard(
                             text = "Rs. ${order.totalAmount.toInt()}",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (isDark) Color(0xFF29B6F6) else Color(0xFF0288D1)
+                            color = PasalHubTheme.colors.info
                         )
                         Text(
                             text = "${order.quantity} items",
@@ -392,9 +438,9 @@ fun ModernOrderCard(
 
                 val flowBrush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF4CAF50),
-                        Color(0xFF81C784),
-                        Color(0xFF4CAF50)
+                        PasalHubTheme.colors.success,
+                        PasalHubTheme.colors.success.copy(alpha = 0.7f),
+                        PasalHubTheme.colors.success
                     ),
                     start = Offset(flowOffset, 0f),
                     end = Offset(flowOffset + 300f, 0f),
@@ -422,9 +468,7 @@ fun ModernOrderCard(
                             Icon(
                                 imageVector = Icons.Default.Sensors,
                                 contentDescription = null,
-                                tint = (if (isDark) Color(0xFF38BDF8) else Color(0xFF1976D2)).copy(
-                                    alpha = pulseAlpha
-                                ),
+                                tint = PasalHubTheme.colors.info.copy(alpha = pulseAlpha),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -456,7 +500,7 @@ fun ModernOrderCard(
                             text = "${(animatedProgress * 100).toInt()}%",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF4CAF50)
+                            color = PasalHubTheme.colors.success
                         )
                         if (order.status != "Delivered" && order.status != "Completed" && order.status != "Cancelled") {
                             val secondsRemaining = ((100 - (animatedProgress * 100)) * 0.75).toInt()
@@ -504,7 +548,7 @@ fun ModernOrderCard(
                                         .size(20.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            if (isActive) Color(0xFF4CAF50) else mutedTextColor.copy(
+                                            if (isActive) PasalHubTheme.colors.success else mutedTextColor.copy(
                                                 alpha = 0.3f
                                             )
                                         ),
@@ -543,7 +587,7 @@ fun ModernOrderCard(
                                     .weight(1f)
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(if (isDark) Color(0xFF2D2D30) else Color(0xFFE9ECEF))
+                                    .background(PasalHubTheme.colors.surfaceVariant)
                             ) {
                                 Box(
                                     modifier = Modifier

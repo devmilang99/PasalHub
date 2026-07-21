@@ -2,14 +2,25 @@ package com.psl.pasalhub.dashboard.home.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.psl.pasalhub.dashboard.home.domain.HomeRepository
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
+import com.psl.pasalhub.dashboard.home.domain.HomeRepository
 import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -34,24 +45,30 @@ class HomeViewModel @Inject constructor(
     private val _refreshTrigger = MutableStateFlow(0L)
 
     val isDarkTheme: StateFlow<Boolean> = repository.isDarkTheme()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val currentUser: StateFlow<UserEntity?> = repository.getUser()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val favoriteIds: StateFlow<Set<Int>> = repository.getFavoriteIds()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     val cartItemIds: StateFlow<Set<Int>> = repository.getCartItems()
         .map { items -> items.map { it.productId }.toSet() }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     val isFilterActive: StateFlow<Boolean> = combine(
         _selectedCategory, _maxPrice, _sellerLocation, _sortBy
     ) { category, price, location, sort ->
         category != "all" || price < 500f || location != "All Locations" || sort != "Relevance"
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
     val homeProductsState: StateFlow<Resource<List<ProductDto>>> = combine(
         combine(
             _selectedCategory,
@@ -61,7 +78,7 @@ class HomeViewModel @Inject constructor(
             _sortBy
         ) { c, q, p, l, s ->
             Filters(c, q, p, l, s)
-        },
+        }.debounce(300.milliseconds).distinctUntilChanged(),
         _refreshTrigger
     ) { filters, _ ->
         val productsFlow = if (filters.category == "all") {

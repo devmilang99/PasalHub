@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.psl.pasalhub" />
+                  <option name="mobileSdkAppId" value="1:1079515205022:android:8718f428ff44d101cd1a8f" />
+                  <option name="projectId" value="pasal-hub" />
+                  <option name="projectNumber" value="1079515205022" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

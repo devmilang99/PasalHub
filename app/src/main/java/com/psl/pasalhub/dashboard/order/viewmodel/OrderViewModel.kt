@@ -3,10 +3,13 @@ package com.psl.pasalhub.dashboard.order.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
-import com.psl.pasalhub.dashboard.order.domain.OrderRepository
 import com.psl.pasalhub.core.database.data.OrderEntity
+import com.psl.pasalhub.dashboard.order.domain.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -45,9 +48,6 @@ class OrderViewModel @Inject constructor(
     fun placeOrder(order: OrderEntity) {
         viewModelScope.launch {
             val orderId = repository.placeOrder(order)
-            if (order.status != "Placing") {
-                appPrefs.emitNotification("Your order #ORD-${1000 + orderId} has been placed successfully!")
-            }
             if (order.status in listOf("Placed", "Packaging", "Sent for Delivery", "Placing")) {
                 repository.scheduleOrderTracking(orderId)
             }

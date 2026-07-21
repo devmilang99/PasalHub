@@ -1,27 +1,38 @@
 package com.psl.pasalhub.dashboard.order.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.ReceiptLong
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
 import java.text.SimpleDateFormat
 
 @Composable
 fun RecentOrdersScreen(viewModel: OrderViewModel) {
-    val orders by viewModel.ordersState.collectAsState()
+    val orders by viewModel.ordersState.collectAsStateWithLifecycle()
     val sdf = SimpleDateFormat("MMM dd, yyyy - HH:mm", LocalLocale.current.platformLocale)
 
     val bgColor = MaterialTheme.colorScheme.background
@@ -29,18 +40,6 @@ fun RecentOrdersScreen(viewModel: OrderViewModel) {
 
     val filteredOrders =
         orders.filter { it.status in listOf("Placing", "Placed", "Packaging", "Sent for Delivery") }
-
-    // Logic to detect when the cancellation window closes
-    val previousStatuses = remember { mutableStateMapOf<Int, String>() }
-    LaunchedEffect(filteredOrders) {
-        filteredOrders.forEach { order ->
-            val prevStatus = previousStatuses[order.orderId]
-            if (prevStatus == "Placing" && order.status == "Placed") {
-                viewModel.emitNotification("Order #ORD-${1000 + order.orderId} confirmed! Tracking started.")
-            }
-            previousStatuses[order.orderId] = order.status
-        }
-    }
 
     Column(
         modifier = Modifier

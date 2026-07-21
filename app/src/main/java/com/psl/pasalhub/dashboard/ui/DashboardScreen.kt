@@ -2,32 +2,71 @@ package com.psl.pasalhub.dashboard.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import kotlinx.coroutines.flow.debounce
-import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalMall
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LocalMall
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.psl.pasalhub.core.database.data.CartItem
-import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.ai.presentation.AiSearchViewModel
 import com.psl.pasalhub.core.application.presentation.AppViewModel
+import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.networking.remote.ProductDto
+import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.cart.ui.CartScreen
 import com.psl.pasalhub.dashboard.cart.viewmodel.CartViewModel
 import com.psl.pasalhub.dashboard.home.ui.HomeScreen
@@ -36,8 +75,9 @@ import com.psl.pasalhub.dashboard.order.ui.OrdersScreen
 import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
 import com.psl.pasalhub.dashboard.profile.ui.ProfileScreen
 import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
-import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.ui.theme.LocalDimens
+import kotlinx.coroutines.flow.debounce
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.FlowPreview::class)
 @Composable
@@ -61,12 +101,23 @@ fun DashboardScreen(
     LaunchedEffect(initialTab) {
         selectedTab = initialTab
     }
-    val cartItems by cartViewModel.cartItems.collectAsState()
-    val cartItemCount = cartItems.size
-    val isDark by viewModel.isDarkTheme.collectAsState()
-    val orders by orderViewModel.ordersState.collectAsState()
-    val recentOrdersCount =
-        orders.count { it.status in listOf("Placing", "Placed", "Packaging", "Sent for Delivery") }
+    val cartItems by cartViewModel.cartItems.collectAsStateWithLifecycle()
+    val cartItemCount by remember { derivedStateOf { cartItems.size } }
+    val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
+    val orders by orderViewModel.ordersState.collectAsStateWithLifecycle()
+    val isSyncing by appViewModel.isSyncing.collectAsStateWithLifecycle()
+    val recentOrdersCount by remember {
+        derivedStateOf {
+            orders.count {
+                it.status in listOf(
+                    "Placing",
+                    "Placed",
+                    "Packaging",
+                    "Sent for Delivery"
+                )
+            }
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -197,21 +248,26 @@ fun DashboardScreen(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
                     icon = {
-                        val currentUser by profileViewModel.currentUser.collectAsState()
-                        val avatarUrl = currentUser?.profileImage
-                            ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "Profile Avatar",
-                            modifier = Modifier
-                                .size(if (dimens.padding > 24.dp) 40.dp else 32.dp)
-                                .clip(CircleShape)
-                                .border(
-                                    width = if (selectedTab == 3) 2.dp else 1.dp,
-                                    color = if (selectedTab == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = CircleShape
-                                )
-                        )
+                        val currentUser by profileViewModel.currentUser.collectAsStateWithLifecycle()
+                        if (currentUser?.profileImage != null) {
+                            AsyncImage(
+                                model = currentUser?.profileImage,
+                                contentDescription = "Profile Avatar",
+                                modifier = Modifier
+                                    .size(if (dimens.padding > 24.dp) 40.dp else 32.dp)
+                                    .clip(CircleShape)
+                                    .border(
+                                        width = if (selectedTab == 3) 2.dp else 1.dp,
+                                        color = if (selectedTab == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                        shape = CircleShape
+                                    )
+                            )
+                        } else {
+                            Icon(
+                                if (selectedTab == 3) Icons.Default.Person else Icons.Outlined.Person,
+                                contentDescription = "Profile Tab"
+                            )
+                        }
                     },
                     label = { Text("Profile") },
                     modifier = Modifier
@@ -227,10 +283,41 @@ fun DashboardScreen(
                 .weight(1f)
                 .testTag("dashboard_scaffold"),
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                if (isSyncing) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Synchronizing your data...",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            },
             bottomBar = {
-                val showBottomNav = !useNavRail && when {
-                    selectedTab == 1 -> cartItems.size <= 3
-                    else -> true
+                val showBottomNav by remember {
+                    derivedStateOf {
+                        !useNavRail && when {
+                            selectedTab == 1 -> cartItems.size <= 3
+                            else -> true
+                        }
+                    }
                 }
 
                 if (showBottomNav) {
@@ -311,21 +398,26 @@ fun DashboardScreen(
                                 selected = selectedTab == 3,
                                 onClick = { selectedTab = 3 },
                                 icon = {
-                                    val currentUser by profileViewModel.currentUser.collectAsState()
-                                    val avatarUrl = currentUser?.profileImage
-                                        ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
-                                    AsyncImage(
-                                        model = avatarUrl,
-                                        contentDescription = "Profile Avatar",
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .clip(CircleShape)
-                                            .border(
-                                                width = if (selectedTab == 3) 2.dp else 1.dp,
-                                                color = if (selectedTab == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                                shape = CircleShape
-                                            )
-                                    )
+                                    val currentUser by profileViewModel.currentUser.collectAsStateWithLifecycle()
+                                    if (currentUser?.profileImage != null) {
+                                        AsyncImage(
+                                            model = currentUser?.profileImage,
+                                            contentDescription = "Profile Avatar",
+                                            modifier = Modifier
+                                                .size(26.dp)
+                                                .clip(CircleShape)
+                                                .border(
+                                                    width = if (selectedTab == 3) 2.dp else 1.dp,
+                                                    color = if (selectedTab == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                                    shape = CircleShape
+                                                )
+                                        )
+                                    } else {
+                                        Icon(
+                                            if (selectedTab == 3) Icons.Default.Person else Icons.Outlined.Person,
+                                            contentDescription = "Profile Tab"
+                                        )
+                                    }
                                 },
                                 label = { Text("Profile", fontSize = 11.sp) },
                                 modifier = Modifier.testTag("nav_profile_tab"),

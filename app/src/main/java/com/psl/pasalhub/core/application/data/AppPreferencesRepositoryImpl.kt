@@ -2,24 +2,32 @@ package com.psl.pasalhub.core.application.data
 
 import android.content.Context
 import androidx.core.content.edit
-import androidx.work.*
+import com.psl.pasalhub.core.application.domain.AppError
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.FavoriteDao
 import com.psl.pasalhub.core.database.data.FavoriteEntity
-import com.psl.pasalhub.dashboard.profile.sync.FavoriteSyncWorker
+import com.psl.pasalhub.core.sync.SyncManager
+import com.psl.pasalhub.core.sync.SyncType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class AppPreferencesRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val favoriteDao: FavoriteDao,
-    private val supabaseClient: SupabaseClient
+    private val supabaseClient: SupabaseClient,
+    private val syncManager: SyncManager
 ) : AppPreferencesRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -27,12 +35,16 @@ class AppPreferencesRepositoryImpl @Inject constructor(
     private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", true))
     private val _isThemeSet = MutableStateFlow(prefs.getBoolean("theme_set", false))
     private val _notificationEvent = MutableSharedFlow<String>()
+    private val _globalError = MutableStateFlow<AppError?>(null)
 
     init {
-        // Initial sync of favorites if logged in
+        // Schedule periodic sync for background updates
+        syncManager.schedulePeriodicSync()
+
+        // Initial sync of all data if logged in to ensure latest data is shown
         CoroutineScope(Dispatchers.IO).launch {
             if (supabaseClient.auth.currentUserOrNull() != null) {
-                scheduleFavoriteSync()
+                syncManager.triggerAllSyncs()
             }
         }
     }
@@ -78,17 +90,13 @@ class AppPreferencesRepositoryImpl @Inject constructor(
         }
 
         if (user != null) {
-            scheduleFavoriteSync()
+            syncManager.triggerSync(SyncType.FAVORITES, immediate = true)
         }
     }
 
-    private fun scheduleFavoriteSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<FavoriteSyncWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
-            .build()
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork("favorite_sync", ExistingWorkPolicy.REPLACE, syncRequest)
+    override fun getGlobalError(): Flow<AppError?> = _globalError.asStateFlow()
+
+    override suspend fun emitGlobalError(error: AppError?) {
+        _globalError.value = error
     }
 }
