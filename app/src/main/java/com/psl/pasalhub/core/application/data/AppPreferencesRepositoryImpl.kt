@@ -44,7 +44,7 @@ class AppPreferencesRepositoryImpl @Inject constructor(
         // Initial sync of all data if logged in to ensure latest data is shown
         CoroutineScope(Dispatchers.IO).launch {
             if (supabaseClient.auth.currentUserOrNull() != null) {
-                syncManager.triggerAllSyncs()
+                syncManager.triggerAllSyncs(fetch = true)
             }
         }
     }
@@ -90,7 +90,7 @@ class AppPreferencesRepositoryImpl @Inject constructor(
         }
 
         if (user != null) {
-            syncManager.triggerSync(SyncType.FAVORITES, immediate = true)
+            syncManager.triggerSync(SyncType.FAVORITES, immediate = true, fetch = false)
         }
     }
 

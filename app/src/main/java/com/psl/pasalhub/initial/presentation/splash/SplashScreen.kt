@@ -2,31 +2,48 @@ package com.psl.pasalhub.initial.presentation.splash
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.WifiOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import com.psl.pasalhub.R
 import com.psl.pasalhub.core.application.utils.NetworkUtils
 import com.psl.pasalhub.core.application.utils.screens.PasalHubBackground
 import com.psl.pasalhub.initial.presentation.InitialViewModel
+import com.psl.pasalhub.ui.theme.PasalHubTheme
 import kotlinx.coroutines.delay
 
 @Composable
@@ -67,18 +84,52 @@ fun SplashScreen(
     if (showNoNetworkDialog) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("No Internet Connection", fontWeight = FontWeight.Bold) },
-            text = { Text("Pasal Hub requires an active internet connection to provide you with the best experience. Please check your network settings and try again.") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.WifiOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = PasalHubTheme.colors.error
+                )
+            },
+            title = {
+                Text(
+                    text = "No Internet Connection",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Text(
+                    text = "Pasal Hub requires an active internet connection to provide you with the best experience. Please check your network settings and try again.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
             confirmButton = {
-                Button(onClick = {
-                    if (NetworkUtils.isNetworkAvailable(context)) {
-                        showNoNetworkDialog = false
-                        retryTrigger++
-                    }
-                }) {
+                Button(
+                    onClick = {
+                        if (NetworkUtils.isNetworkAvailable(context)) {
+                            showNoNetworkDialog = false
+                            retryTrigger++
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PasalHubTheme.colors.primary
+                    )
+                ) {
                     Text("Retry")
                 }
-            }
+            },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            containerColor = PasalHubTheme.colors.surface,
+            textContentColor = PasalHubTheme.colors.textSecondary,
+            titleContentColor = PasalHubTheme.colors.textPrimary
         )
     }
 

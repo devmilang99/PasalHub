@@ -1,18 +1,26 @@
 package com.psl.pasalhub.core.viewmodel
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.products.repository.Resource
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
+import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import androidx.core.content.edit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -125,6 +133,10 @@ class MainViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = Resource.Loading
     )
+
+    suspend fun getProductById(id: Int): ProductDto? {
+        return repository.getProductById(id)
+    }
 
     init {
         // Collect local notification events and emit them to the app-wide preferences

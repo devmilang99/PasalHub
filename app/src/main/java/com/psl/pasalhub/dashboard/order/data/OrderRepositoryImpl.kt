@@ -40,7 +40,6 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun updateOrderProgress(orderId: Int, progress: Int) {
         orderDao.getOrders().first().find { it.orderId == orderId }?.let { order ->
             orderDao.updateOrder(order.copy(progress = progress))
-            scheduleOrderSync()
         }
     }
 
@@ -67,7 +66,7 @@ class OrderRepositoryImpl @Inject constructor(
     }
 
     private fun scheduleOrderSync() {
-        syncManager.triggerSync(SyncType.ORDERS, immediate = true)
+        syncManager.triggerSync(SyncType.ORDERS, immediate = true, fetch = false)
     }
 
     override suspend fun setOrderPause(orderId: Int, isPaused: Boolean) {

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
-import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
@@ -55,8 +55,9 @@ class ProductDetailViewModel @Inject constructor(
 
     fun addToCart(product: ProductDto, quantity: Int) {
         viewModelScope.launch {
+            val user = repository.getUser().first() ?: return@launch
             val cartItems = repository.getCartItems().first()
-            val existing = cartItems.find { it.productId == product.id }
+            val existing = cartItems.find { it.productId == product.id && it.userId == user.id }
             if (existing != null) {
                 repository.updateCartItem(existing.copy(quantity = existing.quantity + quantity))
             } else {
@@ -67,7 +68,8 @@ class ProductDetailViewModel @Inject constructor(
                     else -> "${product.category.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }} Boutique"
                 }
                 repository.addToCart(
-                    CartItem(
+                    CartEntity(
+                        userId = user.id,
                         productId = product.id,
                         title = product.title,
                         price = product.price,
@@ -104,7 +106,7 @@ class ProductDetailViewModel @Inject constructor(
                 seller = "${product.category.replaceFirstChar { it.uppercase() }} Luxury Direct",
                 date = System.currentTimeMillis()
             )
-            val orderId = repository.placeOrder(order)
+            val orderId = repository.placeOrder(order, product.id)
             repository.scheduleOrderTracking(orderId)
             appPrefs.emitNotification("Order placed successfully!")
 

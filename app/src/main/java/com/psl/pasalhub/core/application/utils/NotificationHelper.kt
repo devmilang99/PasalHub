@@ -3,17 +3,12 @@ package com.psl.pasalhub.core.application.utils
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.graphics.Color
 import android.os.Build
-import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
-import com.psl.pasalhub.R
-import com.psl.pasalhub.core.application.receiver.NotificationActionReceiver
 import androidx.core.graphics.toColorInt
+import com.psl.pasalhub.R
 
 class NotificationHelper(private val context: Context) {
     private val notificationManager =
@@ -62,9 +57,10 @@ class NotificationHelper(private val context: Context) {
         remoteViews.setTextViewText(R.id.notification_seller, seller)
 
         // Update progress steps
-        val activeColor = "#BB86FC".toColorInt()
-        val pausedColor = "#FFB74D".toColorInt() // Orange for paused
-        val inactiveColor = "#444444".toColorInt()
+        val activeColor =
+            "#6200EE".toColorInt() // Deeper purple for better contrast on light backgrounds
+        val pausedColor = "#E65100".toColorInt() // Deeper orange for paused
+        val inactiveColor = "#BDBDBD".toColorInt() // Lighter grey for inactive steps
 
         val currentColor = if (isPaused) pausedColor else activeColor
 

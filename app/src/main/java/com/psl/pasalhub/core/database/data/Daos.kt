@@ -37,19 +37,22 @@ interface UserDao {
 
 @Dao
 interface CartDao {
-    @Query("SELECT * FROM cart_items")
-    fun getCartItems(): Flow<List<CartItem>>
+    @Query("SELECT * FROM cart")
+    fun getCartItems(): Flow<List<CartEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun addToCart(item: CartItem)
+    suspend fun addToCart(item: CartEntity)
 
     @Update
-    suspend fun updateCartItem(item: CartItem)
+    suspend fun updateCartItem(item: CartEntity)
 
     @Delete
-    suspend fun deleteCartItem(item: CartItem)
+    suspend fun deleteCartItem(item: CartEntity)
 
-    @Query("DELETE FROM cart_items")
+    @Delete
+    suspend fun deleteMultipleCartItems(items: List<CartEntity>)
+
+    @Query("DELETE FROM cart")
     suspend fun clearCart()
 }
 

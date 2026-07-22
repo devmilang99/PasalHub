@@ -55,6 +55,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +99,7 @@ fun ProfileScreen(
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
+    val isSyncingState by viewModel.isSyncing.collectAsStateWithLifecycle()
     val productResource by viewModel.homeProductsState.collectAsStateWithLifecycle()
     val storedPassword by viewModel.userPassword.collectAsStateWithLifecycle()
     val memberPoints by viewModel.memberPoints.collectAsStateWithLifecycle()
@@ -217,87 +219,93 @@ fun ProfileScreen(
         }
 
         // --- 2. Middle Section ---
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
+        PullToRefreshBox(
+            isRefreshing = isSyncingState,
+            onRefresh = { viewModel.syncFavorites() },
+            modifier = Modifier.weight(1f)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Row of 3 Separate Cards
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
             ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "Points",
-                    value = memberPoints.toString(),
-                    icon = Icons.Rounded.Star,
-                    isDark = isDark,
-                    accentColor = Color(0xFFFFD700)
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "Favorites",
-                    value = favoriteIds.size.toString(),
-                    icon = Icons.Rounded.Favorite,
-                    isDark = isDark,
-                    accentColor = Color(0xFFF87171),
-                    onClick = { showFavoritesSheet = true }
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "Location",
-                    value = if (currentUser?.address.isNullOrEmpty()) "Not Set" else currentUser?.address
-                        ?: "Not Set",
-                    icon = Icons.Rounded.LocationOn,
-                    isDark = isDark,
-                    accentColor = Color(0xFF4ADE80),
-                    onClick = { showAddressDialog = true }
-                )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                // Row of 3 Separate Cards
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Points",
+                        value = memberPoints.toString(),
+                        icon = Icons.Rounded.Star,
+                        isDark = isDark,
+                        accentColor = Color(0xFFFFD700)
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Favorites",
+                        value = favoriteIds.size.toString(),
+                        icon = Icons.Rounded.Favorite,
+                        isDark = isDark,
+                        accentColor = Color(0xFFF87171),
+                        onClick = { showFavoritesSheet = true }
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Location",
+                        value = if (currentUser?.address.isNullOrEmpty()) "Not Set" else currentUser?.address
+                            ?: "Not Set",
+                        icon = Icons.Rounded.LocationOn,
+                        isDark = isDark,
+                        accentColor = Color(0xFF4ADE80),
+                        onClick = { showAddressDialog = true }
+                    )
+                }
 
-            // Main Account Actions List Card
-            SectionHeader("ACCOUNT SETTINGS")
-            PremiumMenuCard(isDark) {
-                if (currentUser?.isGoogleUser == false) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Main Account Actions List Card
+                SectionHeader("ACCOUNT SETTINGS")
+                PremiumMenuCard(isDark) {
+                    if (currentUser?.isGoogleUser == false) {
+                        PremiumMenuItem(
+                            icon = Icons.Rounded.Security,
+                            title = "Change Password",
+                            subtitle = "Update your login credentials",
+                            onClick = { showPasswordSheet = true },
+                            isDark = isDark
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = borderColor
+                        )
+                    }
                     PremiumMenuItem(
-                        icon = Icons.Rounded.Security,
-                        title = "Change Password",
-                        subtitle = "Update your login credentials",
-                        onClick = { showPasswordSheet = true },
+                        icon = Icons.Rounded.RateReview,
+                        title = "My Reviews",
+                        subtitle = "Manage your feedback & ratings",
+                        onClick = { showReviewsScreen = true },
                         isDark = isDark
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         color = borderColor
                     )
+                    PremiumMenuItem(
+                        icon = Icons.Rounded.SupportAgent,
+                        title = "Customer Support",
+                        subtitle = "Need help with your account?",
+                        onClick = { showSupportSheet = true },
+                        isDark = isDark
+                    )
                 }
-                PremiumMenuItem(
-                    icon = Icons.Rounded.RateReview,
-                    title = "My Reviews",
-                    subtitle = "Manage your feedback & ratings",
-                    onClick = { showReviewsScreen = true },
-                    isDark = isDark
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    color = borderColor
-                )
-                PremiumMenuItem(
-                    icon = Icons.Rounded.SupportAgent,
-                    title = "Customer Support",
-                    subtitle = "Need help with your account?",
-                    onClick = { showSupportSheet = true },
-                    isDark = isDark
-                )
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
 
         // --- 3. Footer Section ---

@@ -1,5 +1,7 @@
 package com.psl.pasalhub.ai.presentation
 
+import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -73,6 +75,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,6 +100,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.psl.pasalhub.ai.presentation.components.AiListeningAnimation
+import com.psl.pasalhub.ai.presentation.components.MovingGradientsBackground
+import com.psl.pasalhub.ai.presentation.components.TypewriterText
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
@@ -129,17 +134,17 @@ fun AISearchScreen(
     var isSearchFocused by remember { mutableStateOf(false) }
     val isKeyboardVisible = WindowInsets.isImeVisible
 
-    val bgBrush = Brush.linearGradient(
-        colors = if (isDark) listOf(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-            MaterialTheme.colorScheme.surface
-        ) else listOf(
-            Color(0xFFF8FAFC),
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-            Color(0xFFF8FAFC)
-        )
-    )
+    LaunchedEffect(aiSearchError) {
+        if (aiSearchError != null) {
+            Log.e("AISearchScreen", "Displaying AI Search error: $aiSearchError")
+        }
+    }
+
+    BackHandler {
+        searchQuery = ""
+        aiViewModel.clearSearch()
+        onBackClick()
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -202,9 +207,10 @@ fun AISearchScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(bgBrush)
                 .padding(paddingValues)
         ) {
+            MovingGradientsBackground(isProcessing = isAiProcessing, isDark = isDark)
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -559,12 +565,18 @@ fun ResultsOrHistory(
                     )
                 }
 
-                items(products) { product ->
-                    AiResultProductCard(
-                        product = product,
-                        onProductClick = { onProductClick(product) },
-                        isDark = isDark
-                    )
+                items(products, key = { it.id }) { product ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(600)) + slideInVertically { 50 },
+                        label = "product_entry"
+                    ) {
+                        AiResultProductCard(
+                            product = product,
+                            onProductClick = { onProductClick(product) },
+                            isDark = isDark
+                        )
+                    }
                 }
             }
 
@@ -592,41 +604,49 @@ fun ResultsOrHistory(
             else -> {
                 // Initial State: Welcome Message
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = LocalDimens.current.large),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    var visible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { visible = true }
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn(tween(1000)) + slideInVertically(tween(1000)) { 40 }
                     ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(LocalDimens.current.logoSize)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = LocalDimens.current.large),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                Icons.Rounded.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.padding(LocalDimens.current.small),
-                                tint = MaterialTheme.colorScheme.primary
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(LocalDimens.current.logoSize)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(LocalDimens.current.small),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Hi, $username!",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Text(
+                                text = "What can I help you find today?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Hi, $username!",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Text(
-                            text = "What can I help you find today?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
                     }
                 }
                 item {
@@ -653,10 +673,10 @@ fun QuickActionCards(onActionClick: (String) -> Unit) {
     )
 
     val actionQueries = mapOf(
-        "Latest tech" to "latest PasalHub electronics",
-        "Summer fashion" to "Organic cotton clothing",
-        "Gaming gear" to "PasalHub gaming gear",
-        "Home decor" to "HomeMaster modern appliances"
+        "Latest tech" to "Latest electronics",
+        "Summer fashion" to "Summer fashion and clothing",
+        "Gaming gear" to "Gaming gear and accessories",
+        "Home decor" to "Home decor and appliances"
     )
 
     Column(modifier = Modifier.padding(top = LocalDimens.current.medium)) {
@@ -759,7 +779,7 @@ fun AiResponseBubble(message: String) {
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
+            TypewriterText(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -925,6 +945,9 @@ fun AiResultProductCard(
 
 @Composable
 fun ErrorStateView(error: String, onRetry: () -> Unit) {
+    LaunchedEffect(error) {
+        Log.d("AISearchScreen", "ErrorStateView shown with error: $error")
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()

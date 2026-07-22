@@ -2,6 +2,7 @@ package com.psl.pasalhub.core.sync
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -11,8 +12,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.psl.pasalhub.dashboard.cart.sync.CartSyncWorker
 import com.psl.pasalhub.dashboard.order.sync.OrderSyncWorker
+import com.psl.pasalhub.dashboard.products.sync.FavoriteSyncWorker
 import com.psl.pasalhub.dashboard.products.sync.SupabaseSyncWorker
-import com.psl.pasalhub.dashboard.profile.sync.FavoriteSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -46,16 +47,15 @@ class SyncManager @Inject constructor(
             .distinctUntilChanged()
     }
 
-    fun triggerSync(type: SyncType, immediate: Boolean = false) {
-        // We use REPLACE policy for immediate syncs to ensure they start right away
-        triggerWorkManager(type, immediate)
+    fun triggerSync(type: SyncType, immediate: Boolean = false, fetch: Boolean = false) {
+        triggerWorkManager(type, immediate, fetch)
     }
 
-    fun triggerAllSyncs(immediate: Boolean = false) {
-        triggerSync(SyncType.CART, immediate)
-        triggerSync(SyncType.ORDERS, immediate)
-        triggerSync(SyncType.FAVORITES, immediate)
-        triggerSync(SyncType.PRODUCTS, immediate)
+    fun triggerAllSyncs(fetch: Boolean = false) {
+        triggerSync(SyncType.CART, fetch)
+        triggerSync(SyncType.ORDERS, fetch)
+        triggerSync(SyncType.FAVORITES, fetch)
+        triggerSync(SyncType.PRODUCTS, fetch)
     }
 
     fun schedulePeriodicSync() {
@@ -77,26 +77,39 @@ class SyncManager @Inject constructor(
         )
     }
 
-    private fun triggerWorkManager(type: SyncType, immediate: Boolean) {
+    private fun triggerWorkManager(type: SyncType, immediate: Boolean, fetch: Boolean) {
         val workClass = when (type) {
             SyncType.CART -> CartSyncWorker::class.java
-            SyncType.ORDERS -> OrderSyncWorker::class.java
             SyncType.FAVORITES -> FavoriteSyncWorker::class.java
+            SyncType.ORDERS -> OrderSyncWorker::class.java
             SyncType.PRODUCTS -> SupabaseSyncWorker::class.java
-            SyncType.PROFILE -> null
+            else -> null
         } ?: return
 
-        val syncRequest = OneTimeWorkRequest.Builder(workClass)
+        val inputData = Data.Builder()
+            .putBoolean("fetch", fetch)
+            .build()
+
+        val syncRequestBuilder = OneTimeWorkRequest.Builder(workClass)
+            .setInputData(inputData)
             .setConstraints(
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
             )
-            // If immediate, we might want to set high priority if available (Expedited), 
-            // but for now, just REPLACE will do to ensure the latest trigger wins.
-            .build()
 
+        // Debounce immediate syncs (like cart updates) to prevent rapid worker replacement
+        if (immediate && !fetch) {
+            syncRequestBuilder.setInitialDelay(5, TimeUnit.SECONDS)
+        }
+
+        val syncRequest = syncRequestBuilder.build()
+
+        // Use REPLACE if it's a fetch request or an immediate request, 
+        // otherwise KEEP to avoid cancelling running syncs.
+        val policy = if (fetch || immediate) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+        
         workManager.enqueueUniqueWork(
             "sync_${type.name.lowercase()}",
-            if (immediate) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
+            policy,
             syncRequest
         )
     }

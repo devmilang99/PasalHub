@@ -1,19 +1,21 @@
 package com.psl.pasalhub.ai.presentation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.ai.type.FunctionCallPart
-import com.google.firebase.ai.type.FunctionResponsePart
-import com.google.firebase.ai.type.content
+import com.psl.pasalhub.ai.data.Content
+import com.psl.pasalhub.ai.data.FunctionCall
+import com.psl.pasalhub.ai.data.FunctionResponse
 import com.psl.pasalhub.ai.data.GeminiSearchRouter
+import com.psl.pasalhub.ai.data.Part
 import com.psl.pasalhub.ai.domain.model.SearchFields
 import com.psl.pasalhub.ai.domain.model.SearchIntent
+import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
 import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,26 +28,25 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.addJsonObject
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AiSearchViewModel @Inject constructor(
     private val repository: ProductRepository,
-    private val geminiRouter: GeminiSearchRouter
+    private val geminiRouter: GeminiSearchRouter,
+    private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
 
     private val _refreshTrigger = MutableStateFlow(0L)
     private val _manualProductList = MutableStateFlow<List<ProductDto>?>(null)
-    private val chat by lazy { geminiRouter.startChat() }
+    private val _chatHistory = mutableListOf<Content>()
 
     // AI Search State
     private val _isAiProcessing = MutableStateFlow(false)
@@ -58,8 +59,6 @@ class AiSearchViewModel @Inject constructor(
 
     private val _recommendationMessage = MutableStateFlow<String?>(null)
     val recommendationMessage: StateFlow<String?> = _recommendationMessage.asStateFlow()
-
-    val notificationEvent = MutableSharedFlow<String>()
 
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
@@ -135,51 +134,71 @@ class AiSearchViewModel @Inject constructor(
             _aiSearchIntent.value = null
 
             try {
-                var response = chat.sendMessage(query)
+                _chatHistory.add(Content(role = "user", parts = listOf(Part(text = query))))
+                var response = geminiRouter.routeSearchWithContent(_chatHistory)
 
                 // Function Calling Loop
-                var functionCalls = response.functionCalls
+                var candidate = response.candidates?.firstOrNull()
+                var parts = candidate?.content?.parts ?: emptyList()
+                var functionCalls = parts.mapNotNull { it.functionCall }
+
                 while (functionCalls.isNotEmpty()) {
-                    val parts = mutableListOf<FunctionResponsePart>()
+                    _chatHistory.add(candidate!!.content!!) // Add model's tool call to history
+
+                    val responseParts = mutableListOf<Part>()
                     for (call in functionCalls) {
                         val result = handleFunctionCall(call)
-                        parts.add(FunctionResponsePart(call.name, result))
+                        responseParts.add(
+                            Part(
+                                functionResponse = FunctionResponse(
+                                    call.name,
+                                    result
+                                )
+                            )
+                        )
                     }
 
-                    response = chat.sendMessage(content("function") {
-                        parts.forEach { part(it) }
-                    })
-                    functionCalls = response.functionCalls
+                    val responseContent = Content(role = "function", parts = responseParts)
+                    _chatHistory.add(responseContent)
+
+                    response = geminiRouter.routeSearchWithContent(_chatHistory)
+                    candidate = response.candidates?.firstOrNull()
+                    parts = candidate?.content?.parts ?: emptyList()
+                    functionCalls = parts.mapNotNull { it.functionCall }
                 }
 
-                val finalMessage = response.text
+                val finalMessage = parts.firstOrNull { it.text != null }?.text
                 if (!finalMessage.isNullOrBlank()) {
                     _recommendationMessage.value = finalMessage
-                    notificationEvent.emit(finalMessage.take(100))
+                    appPrefs.emitNotification(finalMessage.take(100))
+                    _chatHistory.add(candidate!!.content!!) // Add final response to history
                 }
             } catch (e: Exception) {
+                Log.e("AiSearchViewModel", "AI Search failed: ${e.message}", e)
                 _aiSearchError.value = "AI Assistant is currently unavailable."
-                notificationEvent.emit("Error: ${e.message}")
+                appPrefs.emitNotification("Error: ${e.message}")
             } finally {
                 _isAiProcessing.value = false
             }
         }
     }
 
-    private suspend fun handleFunctionCall(call: FunctionCallPart): JsonObject {
-        val args = call.args
+    private suspend fun handleFunctionCall(call: FunctionCall): JsonObject {
+        val args = call.args ?: buildJsonObject { }
         return when (call.name) {
             "search_products" -> {
-                val keywords = args["keywords"]?.jsonPrimitive?.contentOrNull
-                val category = args["category"]?.jsonPrimitive?.contentOrNull
+                val keywords = args["keywords"]?.jsonPrimitive?.content
+                val category = args["category"]?.jsonPrimitive?.content
                 val priceMax = args["price_max"]?.jsonPrimitive?.doubleOrNull
-                val sortBy = args["sort_by"]?.jsonPrimitive?.contentOrNull
+                val sortBy = args["sort_by"]?.jsonPrimitive?.content
+                val brand = args["brand"]?.jsonPrimitive?.content
+                val color = args["color"]?.jsonPrimitive?.content
 
                 val fields = SearchFields(
                     keywords = keywords,
                     category = category,
-                    brand = args["brand"]?.jsonPrimitive?.contentOrNull,
-                    color = args["color"]?.jsonPrimitive?.contentOrNull,
+                    brand = brand,
+                    color = color,
                     size = null,
                     price_max = priceMax,
                     min_rating = null
@@ -216,16 +235,16 @@ class AiSearchViewModel @Inject constructor(
                 buildJsonObject {
                     put("status", "success")
                     put("count", filtered.size)
-                    put("products", buildJsonArray {
+                    putJsonArray("products") {
                         filtered.forEach { product ->
-                            addJsonObject {
+                            add(buildJsonObject {
                                 put("id", product.id)
                                 put("title", product.title)
                                 put("price", product.price)
                                 put("category", product.category)
-                            }
+                            })
                         }
-                    })
+                    }
                 }
             }
 
@@ -250,7 +269,7 @@ class AiSearchViewModel @Inject constructor(
             }
 
             "apply_discount" -> {
-                val code = args["coupon_code"]?.jsonPrimitive?.contentOrNull
+                val code = args["coupon_code"]?.jsonPrimitive?.content
                 if (code?.uppercase() == "PASAL10") {
                     buildJsonObject {
                         put("status", "success")
@@ -275,6 +294,7 @@ class AiSearchViewModel @Inject constructor(
         _aiSearchError.value = null
         _recommendationMessage.value = null
         _isAiProcessing.value = false
+        _chatHistory.clear()
     }
 
     fun clearHistory() {

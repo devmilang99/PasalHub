@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -71,7 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.psl.pasalhub.core.application.utils.screens.formatDecimalPrice
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
-import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.dashboard.cart.viewmodel.CartViewModel
 import com.psl.pasalhub.ui.theme.PasalHubTheme
 
@@ -79,22 +80,23 @@ import com.psl.pasalhub.ui.theme.PasalHubTheme
 fun CartScreen(
     viewModel: CartViewModel,
     onBack: () -> Unit,
-    onOrderReview: (List<CartItem>, Double, Double, Double, Double, String, String, String) -> Unit
+    onOrderReview: (List<CartEntity>, Double, Double, Double, Double, String, String, String) -> Unit
 ) {
     val cartItemsList by viewModel.cartItems.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isExpanded = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(840)
 
     // Set of selected item IDs. By default, all items are selected.
-    var selectedItemIds by remember(cartItemsList) {
-        mutableStateOf(cartItemsList.map { it.productId }.toSet())
+    var selectedIds by remember(cartItemsList) {
+        mutableStateOf(cartItemsList.map { it.id }.toSet())
     }
 
-    LaunchedEffect(selectedItemIds) {
-        viewModel.updateSelectedItems(selectedItemIds)
+    LaunchedEffect(selectedIds) {
+        viewModel.updateSelectedItems(selectedIds)
     }
 
     // Voucher selection
@@ -122,67 +124,156 @@ fun CartScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            CartHeader(
-                onBack = onBack,
-                onDeleteClick = { showDeleteConfirmDialog = true },
-                hasItems = cartItemsList.isNotEmpty(),
-                textColor = textColor
-            )
+        PullToRefreshBox(
+            isRefreshing = isSyncing,
+            onRefresh = { viewModel.syncCart() },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header
+                CartHeader(
+                    onBack = onBack,
+                    onDeleteClick = { showDeleteConfirmDialog = true },
+                    hasItems = cartItemsList.isNotEmpty(),
+                    textColor = textColor
+                )
 
-            if (cartItemsList.isEmpty()) {
-                EmptyCartView(textColor, mutedTextColor)
-            } else {
-                if (isExpanded) {
-                    // Tablet Layout
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(32.dp)
-                    ) {
-                        // Left: Cart Items
-                        Column(modifier = Modifier.weight(1.5f)) {
+                if (cartItemsList.isEmpty()) {
+                    EmptyCartView(textColor, mutedTextColor)
+                } else {
+                    if (isExpanded) {
+                        // Tablet Layout
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(32.dp)
+                        ) {
+                            // Left: Cart Items
+                            Column(modifier = Modifier.weight(1.5f)) {
+                                SelectionControls(
+                                    selectedCount = selectedIds.size,
+                                    totalCount = cartItemsList.size,
+                                    allSelected = selectedIds.size == cartItemsList.size,
+                                    onSelectAll = { checked ->
+                                        selectedIds =
+                                            if (checked) cartItemsList.map { it.id }
+                                                .toSet() else emptySet()
+                                    },
+                                    textColor = textColor,
+                                    mutedTextColor = mutedTextColor
+                                )
+                                LazyColumn(
+                                    contentPadding = PaddingValues(bottom = 32.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(cartItemsList) { item ->
+                                        CartItemRow(
+                                            item = item,
+                                            isChecked = selectedIds.contains(item.id),
+                                            onCheckedChange = { checked ->
+                                                selectedIds =
+                                                    if (checked) selectedIds + item.id else selectedIds - item.id
+                                            },
+                                            onIncrease = { viewModel.increaseQuantity(item) },
+                                            onDecrease = { viewModel.decreaseQuantity(item) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Right: Summary
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 16.dp)
+                            ) {
+                                val selectedItems by remember(cartItemsList, selectedIds) {
+                                    derivedStateOf { cartItemsList.filter { selectedIds.contains(it.id) } }
+                                }
+                                CartSummaryCard(
+                                    selectedItems = selectedItems,
+                                    cardColor = cardColor,
+                                    textColor = textColor,
+                                    mutedTextColor = mutedTextColor,
+                                    selectedVoucher = selectedVoucher,
+                                    onVoucherChange = { selectedVoucher = it },
+                                    vouchers = vouchers,
+                                    isVoucherExpanded = isVoucherExpanded,
+                                    onVoucherExpandedChange = { isVoucherExpanded = it },
+                                    selectedPaymentMethod = selectedPaymentMethod,
+                                    onPaymentMethodChange = { selectedPaymentMethod = it },
+                                    address = currentUser?.address ?: "Default Address, New York",
+                                    onCheckoutClick = {
+                                        if (selectedItems.isNotEmpty()) {
+                                            val itemsSubtotal =
+                                                selectedItems.sumOf { it.price * it.quantity }
+                                            val discountAmount = if (itemsSubtotal > 0.0) {
+                                                if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
+                                                    itemsSubtotal
+                                                } else {
+                                                    selectedVoucher.second
+                                                }
+                                            } else {
+                                                0.0
+                                            }
+                                            val discountedSubtotal =
+                                                (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
+                                            val taxAmount = discountedSubtotal * 0.05
+                                            val finalTotal = discountedSubtotal + taxAmount
+
+                                            onOrderReview(
+                                                selectedItems,
+                                                itemsSubtotal,
+                                                taxAmount,
+                                                discountAmount,
+                                                finalTotal,
+                                                selectedVoucher.first,
+                                                selectedPaymentMethod,
+                                                currentUser?.address ?: "Default Address, New York"
+                                            )
+                                        } else {
+                                            viewModel.showNotification("Select an item first.")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        // Mobile Layout
+                        Column(modifier = Modifier.fillMaxSize()) {
                             SelectionControls(
-                                selectedCount = selectedItemIds.size,
+                                selectedCount = selectedIds.size,
                                 totalCount = cartItemsList.size,
-                                allSelected = selectedItemIds.size == cartItemsList.size,
+                                allSelected = selectedIds.size == cartItemsList.size,
                                 onSelectAll = { checked ->
-                                    selectedItemIds =
-                                        if (checked) cartItemsList.map { it.productId }
-                                            .toSet() else emptySet()
+                                    selectedIds = if (checked) cartItemsList.map { it.id }
+                                        .toSet() else emptySet()
                                 },
                                 textColor = textColor,
                                 mutedTextColor = mutedTextColor
                             )
                             LazyColumn(
-                                contentPadding = PaddingValues(bottom = 32.dp),
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 items(cartItemsList) { item ->
                                     CartItemRow(
                                         item = item,
-                                        isChecked = selectedItemIds.contains(item.productId),
+                                        isChecked = selectedIds.contains(item.id),
                                         onCheckedChange = { checked ->
-                                            selectedItemIds =
-                                                if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
+                                            selectedIds =
+                                                if (checked) selectedIds + item.id else selectedIds - item.id
                                         },
                                         onIncrease = { viewModel.increaseQuantity(item) },
                                         onDecrease = { viewModel.decreaseQuantity(item) }
                                     )
                                 }
                             }
-                        }
 
-                        // Right: Summary
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(vertical = 16.dp)
-                        ) {
-                            val selectedItems by remember(cartItemsList, selectedItemIds) {
-                                derivedStateOf { cartItemsList.filter { selectedItemIds.contains(it.productId) } }
+                            val selectedItems by remember(cartItemsList, selectedIds) {
+                                derivedStateOf { cartItemsList.filter { selectedIds.contains(it.id) } }
                             }
                             CartSummaryCard(
                                 selectedItems = selectedItems,
@@ -223,7 +314,7 @@ fun CartScreen(
                                             finalTotal,
                                             selectedVoucher.first,
                                             selectedPaymentMethod,
-                                            currentUser?.address ?: "Default Address, New York"
+                                            currentUser?.address ?: "Default Address, Ktm HQ"
                                         )
                                     } else {
                                         viewModel.showNotification("Select an item first.")
@@ -231,89 +322,6 @@ fun CartScreen(
                                 }
                             )
                         }
-                    }
-                } else {
-                    // Mobile Layout
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        SelectionControls(
-                            selectedCount = selectedItemIds.size,
-                            totalCount = cartItemsList.size,
-                            allSelected = selectedItemIds.size == cartItemsList.size,
-                            onSelectAll = { checked ->
-                                selectedItemIds = if (checked) cartItemsList.map { it.productId }
-                                    .toSet() else emptySet()
-                            },
-                            textColor = textColor,
-                            mutedTextColor = mutedTextColor
-                        )
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(cartItemsList) { item ->
-                                CartItemRow(
-                                    item = item,
-                                    isChecked = selectedItemIds.contains(item.productId),
-                                    onCheckedChange = { checked ->
-                                        selectedItemIds =
-                                            if (checked) selectedItemIds + item.productId else selectedItemIds - item.productId
-                                    },
-                                    onIncrease = { viewModel.increaseQuantity(item) },
-                                    onDecrease = { viewModel.decreaseQuantity(item) }
-                                )
-                            }
-                        }
-
-                        val selectedItems by remember(cartItemsList, selectedItemIds) {
-                            derivedStateOf { cartItemsList.filter { selectedItemIds.contains(it.productId) } }
-                        }
-                        CartSummaryCard(
-                            selectedItems = selectedItems,
-                            cardColor = cardColor,
-                            textColor = textColor,
-                            mutedTextColor = mutedTextColor,
-                            selectedVoucher = selectedVoucher,
-                            onVoucherChange = { selectedVoucher = it },
-                            vouchers = vouchers,
-                            isVoucherExpanded = isVoucherExpanded,
-                            onVoucherExpandedChange = { isVoucherExpanded = it },
-                            selectedPaymentMethod = selectedPaymentMethod,
-                            onPaymentMethodChange = { selectedPaymentMethod = it },
-                            address = currentUser?.address ?: "Default Address, New York",
-                            onCheckoutClick = {
-                                if (selectedItems.isNotEmpty()) {
-                                    val itemsSubtotal =
-                                        selectedItems.sumOf { it.price * it.quantity }
-                                    val discountAmount = if (itemsSubtotal > 0.0) {
-                                        if (selectedVoucher.first == "PASALSAVINGS" && itemsSubtotal < 30.0) {
-                                            itemsSubtotal
-                                        } else {
-                                            selectedVoucher.second
-                                        }
-                                    } else {
-                                        0.0
-                                    }
-                                    val discountedSubtotal =
-                                        (itemsSubtotal - discountAmount).coerceAtLeast(0.0)
-                                    val taxAmount = discountedSubtotal * 0.05
-                                    val finalTotal = discountedSubtotal + taxAmount
-
-                                    onOrderReview(
-                                        selectedItems,
-                                        itemsSubtotal,
-                                        taxAmount,
-                                        discountAmount,
-                                        finalTotal,
-                                        selectedVoucher.first,
-                                        selectedPaymentMethod,
-                                        currentUser?.address ?: "Default Address, Ktm HQ"
-                                    )
-                                } else {
-                                    viewModel.showNotification("Select an item first.")
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -333,7 +341,7 @@ fun CartScreen(
                 containerColor = cardColor,
                 text = {
                     Text(
-                        "Are you sure you want to remove the selected ${selectedItemIds.size} items from your shopping cart?",
+                        "Are you sure you want to remove the selected ${selectedIds.size} items from your shopping cart?",
                         color = mutedTextColor
                     )
                 },
@@ -341,9 +349,9 @@ fun CartScreen(
                     Button(
                         onClick = {
                             val itemsToDelete =
-                                cartItemsList.filter { selectedItemIds.contains(it.productId) }
+                                cartItemsList.filter { selectedIds.contains(it.id) }
                             viewModel.deleteMultipleCartItems(itemsToDelete)
-                            selectedItemIds = emptySet()
+                            selectedIds = emptySet()
                             showDeleteConfirmDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -466,7 +474,7 @@ fun SelectionControls(
 
 @Composable
 fun CartSummaryCard(
-    selectedItems: List<CartItem>,
+    selectedItems: List<CartEntity>,
     cardColor: Color,
     textColor: Color,
     mutedTextColor: Color,
@@ -743,7 +751,7 @@ fun SummaryRow(label: String, value: String, labelColor: Color, valueColor: Colo
 
 @Composable
 fun CartItemRow(
-    item: CartItem,
+    item: CartEntity,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onIncrease: () -> Unit,
@@ -774,7 +782,7 @@ fun CartItemRow(
                     checkedColor = PasalHubTheme.colors.success,
                     uncheckedColor = mutedTextColor.copy(alpha = 0.5f)
                 ),
-                modifier = Modifier.testTag("cart_checkbox_${item.productId}")
+                modifier = Modifier.testTag("cart_checkbox_${item.id}")
             )
 
             Spacer(modifier = Modifier.width(8.dp))

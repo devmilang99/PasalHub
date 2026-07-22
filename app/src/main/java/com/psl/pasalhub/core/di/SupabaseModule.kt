@@ -16,8 +16,10 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.serializer.KotlinXSerializer
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.seconds
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -38,6 +40,14 @@ object SupabaseModule {
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY.trim().removeSurrounding("\"")
                 .removeSurrounding("'")
         ) {
+            httpEngine = OkHttp.create {
+                config {
+                    connectTimeout(20.seconds)
+                    readTimeout(20.seconds)
+                    writeTimeout(20.seconds)
+                }
+            }
+
             install(Postgrest)
             install(Auth) {
                 sessionManager = SettingsSessionManager(settings)

@@ -7,7 +7,7 @@ import com.psl.pasalhub.BuildConfig
 @Database(
     entities = [
         UserEntity::class,
-        CartItem::class,
+        CartEntity::class,
         OrderEntity::class,
         ProductEntity::class,
         FavoriteEntity::class

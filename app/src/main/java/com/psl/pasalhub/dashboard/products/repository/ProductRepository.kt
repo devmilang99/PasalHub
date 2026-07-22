@@ -6,7 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.psl.pasalhub.core.database.data.CartDao
-import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.database.data.OrderDao
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.core.database.data.ProductDao
@@ -100,38 +100,41 @@ class ProductRepository @Inject constructor(
     }
 
     // Cart operations
-    fun getCartItems(): Flow<List<CartItem>> = cartDao.getCartItems()
+    fun getCartItems(): Flow<List<CartEntity>> = cartDao.getCartItems()
 
-    suspend fun addToCart(item: CartItem) {
+    suspend fun addToCart(item: CartEntity) {
         cartDao.addToCart(item)
-        syncManager.triggerSync(SyncType.CART, immediate = true)
+        syncManager.triggerSync(SyncType.CART, immediate = true, fetch = false)
     }
 
     suspend fun removeFromCart(productId: Int) {
         cartDao.getCartItems().first().find { it.productId == productId }?.let {
             cartDao.deleteCartItem(it)
+            syncManager.triggerSync(SyncType.CART, immediate = true, fetch = false)
         }
-        syncManager.triggerSync(SyncType.CART, immediate = true)
     }
 
-    suspend fun updateCartItem(item: CartItem) {
+    suspend fun updateCartItem(item: CartEntity) {
         cartDao.updateCartItem(item)
-        syncManager.triggerSync(SyncType.CART, immediate = true)
+        syncManager.triggerSync(SyncType.CART, immediate = true, fetch = false)
     }
 
     suspend fun clearCart() {
         cartDao.clearCart()
-        syncManager.triggerSync(SyncType.CART, immediate = true)
+        syncManager.triggerSync(SyncType.CART, immediate = true, fetch = false)
     }
 
     // Order operations
     fun getOrders(): Flow<List<OrderEntity>> = orderDao.getOrders()
 
-    suspend fun placeOrder(order: OrderEntity): Int {
+    suspend fun placeOrder(order: OrderEntity, productIdToRemove: Int? = null): Int {
         val id = orderDao.insertOrder(order)
-        cartDao.clearCart()
-        syncManager.triggerSync(SyncType.ORDERS, immediate = true)
-        syncManager.triggerSync(SyncType.CART, immediate = true)
+        syncManager.triggerSync(SyncType.ORDERS, immediate = true, fetch = false)
+
+        if (productIdToRemove != null) {
+            removeFromCart(productIdToRemove)
+        }
+
         return id.toInt()
     }
 

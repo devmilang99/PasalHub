@@ -200,6 +200,9 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
+    implementation(libs.androidx.appfunctions)
+    implementation(libs.androidx.appfunctions.service)
+    ksp(libs.androidx.appfunctions.compiler)
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.androidx.compiler)
     ksp(libs.androidx.room.compiler)
@@ -207,6 +210,7 @@ dependencies {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    arg("appfunctions:aggregateAppFunctions", "true")
 }
 
 configurations.all {

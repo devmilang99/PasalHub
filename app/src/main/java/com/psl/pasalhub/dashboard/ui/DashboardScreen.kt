@@ -21,12 +21,10 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalMall
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocalMall
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,7 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.psl.pasalhub.ai.presentation.AiSearchViewModel
 import com.psl.pasalhub.core.application.presentation.AppViewModel
-import com.psl.pasalhub.core.database.data.CartItem
+import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.cart.ui.CartScreen
@@ -93,7 +91,7 @@ fun DashboardScreen(
     onAiSearchClick: () -> Unit = {},
     onFilterClick: () -> Unit = {},
     onProductClick: (ProductDto) -> Unit,
-    onOrderReview: (List<CartItem>, Double, Double, Double, Double, String, String, String) -> Unit = { _, _, _, _, _, _, _, _ -> },
+    onOrderReview: (List<CartEntity>, Double, Double, Double, Double, String, String, String) -> Unit = { _, _, _, _, _, _, _, _ -> },
     initialTab: Int = 0
 ) {
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0: Home, 1: Cart, 2: Order, 3: Profile
@@ -232,7 +230,7 @@ fun DashboardScreen(
                             }
                         ) {
                             Icon(
-                                if (selectedTab == 2) Icons.Default.ReceiptLong else Icons.Outlined.ReceiptLong,
+                                if (selectedTab == 2) Icons.AutoMirrored.Filled.ReceiptLong else Icons.AutoMirrored.Outlined.ReceiptLong,
                                 contentDescription = "Orders Tab"
                             )
                         }

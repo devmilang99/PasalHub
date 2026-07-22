@@ -1,4 +1,4 @@
-package com.psl.pasalhub.dashboard.cart.sync
+package com.psl.pasalhub.dashboard.products.sync
 
 import android.content.Context
 import android.util.Log
@@ -11,7 +11,7 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
 
 @HiltWorker
-class CartSyncWorker @AssistedInject constructor(
+class FavoriteSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val dataSyncRepository: DataSyncRepository
@@ -19,15 +19,15 @@ class CartSyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val fetch = inputData.getBoolean("fetch", false)
-        Log.d("CartSyncWorker", "Starting cart sync (fetch=$fetch)")
+        Log.d("FavoriteSyncWorker", "Starting favorites sync (fetch=$fetch)")
 
         return try {
-            dataSyncRepository.syncCart(fetch)
+            dataSyncRepository.syncFavorites(fetch)
             Result.success()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e("CartSyncWorker", "Cart sync failed: ${e.message}", e)
+            Log.e("FavoriteSyncWorker", "Favorites sync failed: ${e.message}", e)
             Result.retry()
         }
     }

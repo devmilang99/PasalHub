@@ -184,8 +184,8 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         }
 
         // Trigger initial sync to restore cart/orders/favorites
-        syncManager.triggerSync(SyncType.CART, immediate = true)
-        syncManager.triggerSync(SyncType.ORDERS, immediate = true)
-        syncManager.triggerSync(SyncType.FAVORITES, immediate = true)
+        syncManager.triggerSync(SyncType.CART, fetch = true)
+        syncManager.triggerSync(SyncType.ORDERS, fetch = true)
+        syncManager.triggerSync(SyncType.FAVORITES, fetch = true)
     }
 }

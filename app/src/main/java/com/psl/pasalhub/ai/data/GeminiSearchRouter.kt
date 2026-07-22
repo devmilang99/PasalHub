@@ -1,31 +1,40 @@
 package com.psl.pasalhub.ai.data
 
-import com.google.firebase.Firebase
-import com.google.firebase.ai.ai
-import com.google.firebase.ai.type.FunctionDeclaration
-import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.Schema
-import com.google.firebase.ai.type.Tool
-import com.google.firebase.ai.type.generationConfig
 import com.psl.pasalhub.ai.domain.model.SearchIntent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GeminiSearchRouter {
+@Singleton
+class GeminiSearchRouter @Inject constructor(
+    private val geminiService: GeminiService
+) {
 
     private val searchProductsTool = FunctionDeclaration(
         name = "search_products",
         description = "Search for products in the Pasal Hub catalog based on various filters. Use this when the user is looking for something to buy.",
-        parameters = mapOf(
-            "keywords" to Schema.string("Core product keywords or nouns (e.g., 'laptop', 'shoes')."),
-            "category" to Schema.string(
-                "Product category. Allowed: electronics, clothing, footwear, home_appliances, accessories, sports_fitness, fashion, jewelery, home."
-            ),
-            "brand" to Schema.string("Specific brand name if mentioned."),
-            "color" to Schema.string("Preferred color."),
-            "price_max" to Schema.double("Maximum price limit."),
-            "sort_by" to Schema.string(
-                "Sorting preference. Allowed: price_asc, price_desc, rating_desc, relevance."
+        parameters = Schema(
+            type = "object",
+            properties = mapOf(
+                "keywords" to Schema(
+                    type = "string",
+                    description = "Core product keywords or nouns (e.g., 'laptop', 'shoes')."
+                ),
+                "category" to Schema(
+                    type = "string",
+                    description = "Product category. Allowed: electronics, clothing, footwear, home_appliances, accessories, sports_fitness, fashion, jewelery, home."
+                ),
+                "brand" to Schema(
+                    type = "string",
+                    description = "Specific brand name if mentioned."
+                ),
+                "color" to Schema(type = "string", description = "Preferred color."),
+                "price_max" to Schema(type = "number", description = "Maximum price limit."),
+                "sort_by" to Schema(
+                    type = "string",
+                    description = "Sorting preference. Allowed: price_asc, price_desc, rating_desc, relevance."
+                )
             )
         )
     )
@@ -33,45 +42,97 @@ class GeminiSearchRouter {
     private val getProductDetailsTool = FunctionDeclaration(
         name = "get_product_details",
         description = "Get detailed information about a specific product by its ID. Use this when the user asks specifically about one product.",
-        parameters = mapOf(
-            "product_id" to Schema.integer("The unique ID of the product.")
+        parameters = Schema(
+            type = "object",
+            properties = mapOf(
+                "product_id" to Schema(
+                    type = "integer",
+                    description = "The unique ID of the product."
+                )
+            ),
+            required = listOf("product_id")
         )
     )
 
     private val applyDiscountTool = FunctionDeclaration(
         name = "apply_discount",
         description = "Check for available discounts or apply a coupon code.",
-        parameters = mapOf(
-            "coupon_code" to Schema.string("The discount coupon code (optional)."),
-            "product_id" to Schema.integer("Specific product ID to check discount for (optional).")
-        ),
-        optionalParameters = listOf("coupon_code", "product_id")
-    )
-
-    private val generativeModel by lazy {
-        Firebase.ai(backend = GenerativeBackend.vertexAI()).generativeModel(
-            modelName = "gemini-3.1-flash-lite",
-            generationConfig = generationConfig {
-                temperature = 0.2f
-            },
-            tools = listOf(
-                Tool.functionDeclarations(
-                    listOf(
-                        searchProductsTool,
-                        getProductDetailsTool,
-                        applyDiscountTool
-                    )
+        parameters = Schema(
+            type = "object",
+            properties = mapOf(
+                "coupon_code" to Schema(
+                    type = "string",
+                    description = "The discount coupon code (optional)."
+                ),
+                "product_id" to Schema(
+                    type = "integer",
+                    description = "Specific product ID to check discount for (optional)."
                 )
             )
         )
+    )
+
+    private val tools = listOf(
+        Tool(
+            functionDeclarations = listOf(
+                searchProductsTool,
+                getProductDetailsTool,
+                applyDiscountTool
+            )
+        )
+    )
+
+    private val generationConfig = GenerationConfig(
+        temperature = 0.2f
+    )
+
+    private val systemInstruction = Content(
+        parts = listOf(
+            Part(
+                text = """
+                You are the AI Assistant for PasalHub, a premium e-commerce app. 
+                Your primary goal is to help users find products.
+                
+                CRITICAL RULES:
+                1. Always use 'search_products' tool when a user mentions a category or wants to explore products.
+                2. Do not answer that you cannot find products without first calling the 'search_products' tool.
+                3. If the user clicks a "Quick Explore" action (like 'Latest electronics', 'Summer fashion', etc.), you MUST call 'search_products' with the appropriate category.
+                4. For 'Latest tech' or 'Latest electronics', use category='electronics'.
+                5. For 'Summer fashion', use category='clothing' or 'fashion'.
+                6. For 'Gaming gear', use category='electronics' or 'sports_fitness' with 'gaming' keywords.
+                7. For 'Home decor', use category='home'.
+                8. Always keep your tone helpful, professional, and concise.
+                """.trimIndent()
+            )
+        )
+    )
+
+    suspend fun routeSearch(query: String, history: List<Content> = emptyList()): GeminiResponse {
+        val contents = history.toMutableList().apply {
+            add(Content(role = "user", parts = listOf(Part(text = query))))
+        }
+        val request = GeminiRequest(
+            contents = contents,
+            tools = tools,
+            generationConfig = generationConfig,
+            systemInstruction = systemInstruction
+        )
+        return geminiService.generateContent(request)
     }
 
-    fun startChat() = generativeModel.startChat()
+    suspend fun routeSearchWithContent(contents: List<Content>): GeminiResponse {
+        val request = GeminiRequest(
+            contents = contents,
+            tools = tools,
+            generationConfig = generationConfig,
+            systemInstruction = systemInstruction
+        )
+
+        return geminiService.generateContent(request)
+    }
 
     // Backward compatibility for the legacy parsing flow if still needed
-    // In the new flow, we will use the chat interface directly in the ViewModel
     suspend fun routeSearchLegacy(query: String): SearchIntent? = withContext(Dispatchers.IO) {
-        // This is kept for reference, but we will migrate to function calling in the ViewModel
         null
     }
 }

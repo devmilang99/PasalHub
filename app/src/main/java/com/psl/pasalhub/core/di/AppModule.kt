@@ -1,7 +1,6 @@
 package com.psl.pasalhub.core.di
 
 import android.content.Context
-import com.psl.pasalhub.ai.data.GeminiSearchRouter
 import com.psl.pasalhub.core.application.utils.NotificationHelper
 import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.OrderDao
@@ -31,12 +30,6 @@ object AppModule {
         @ApplicationContext context: Context
     ): ProductRepository {
         return ProductRepository(userDao, cartDao, orderDao, productDao, syncManager, context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGeminiSearchRouter(): GeminiSearchRouter {
-        return GeminiSearchRouter()
     }
 
     @Provides

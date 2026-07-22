@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +29,9 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -48,6 +51,7 @@ import com.psl.pasalhub.auth.login.viewmodel.LoginViewModel
 import com.psl.pasalhub.auth.register.viewmodel.RegisterViewModel
 import com.psl.pasalhub.core.application.domain.AppError
 import com.psl.pasalhub.core.application.presentation.AppViewModel
+import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.cart.ui.OrderReviewScreen
 import com.psl.pasalhub.dashboard.cart.viewmodel.CartViewModel
@@ -370,7 +374,9 @@ fun PasalHubNavHost(
                 viewModel = mainViewModel,
                 aiViewModel = aiSearchViewModel,
                 onBackClick = {
-                    navController.navigate("dashboard?startTab=0")
+                    navController.navigate("dashboard?startTab=0") {
+                        popUpTo("ai_search") { inclusive = true }
+                    }
                 },
                 onProductClick = { product ->
                     navController.navigate("product_detail/${product.id}")
@@ -457,25 +463,36 @@ fun PasalHubNavHost(
                     )
                     appViewModel.postNotification("Your order has been placed successfully!")
                     navController.navigate("dashboard?startTab=2") {
-                        popUpTo("dashboard?startTab=1") { inclusive = true }
+                        popUpTo("dashboard?startTab=0") { inclusive = true }
                     }
                 }
             )
         }
 
         composable("product_detail/{productId}") { backStackEntry ->
-            val productId =
-                backStackEntry.arguments?.getString("productId")?.toIntOrNull()
+            val productIdInt =
+                backStackEntry.arguments?.getString("productId")?.toIntOrNull() ?: return@composable
             val productsState by mainViewModel.homeProductsState.collectAsStateWithLifecycle()
-            val product = when (productsState) {
-                is Resource.Success -> (productsState as Resource.Success).data.find { it.id == productId }
-                else -> null
+
+            val productDetailState: MutableState<ProductDto?> = remember { mutableStateOf(null) }
+
+            LaunchedEffect(productIdInt, productsState) {
+                val state = productsState
+                val found = if (state is Resource.Success<List<ProductDto>>) {
+                    state.data.find { it.id == productIdInt }
+                } else null
+                productDetailState.value = found ?: mainViewModel.getProductById(productIdInt)
             }
 
-            if (product != null) {
+            val currentProduct = productDetailState.value
+            if (currentProduct == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
                 val productDetailViewModel: ProductDetailViewModel = hiltViewModel()
                 ProductDetailScreen(
-                    product = product,
+                    product = currentProduct,
                     viewModel = mainViewModel,
                     detailViewModel = productDetailViewModel,
                     onBack = { navController.popBackStack() },

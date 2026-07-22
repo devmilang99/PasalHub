@@ -1,17 +1,17 @@
 package com.psl.pasalhub.dashboard.home.data
 
 import android.content.Context
-import androidx.core.content.edit
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
-import com.psl.pasalhub.dashboard.home.domain.HomeRepository
+import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
-import com.psl.pasalhub.core.database.data.CartItem
 import com.psl.pasalhub.core.networking.remote.ProductDto
-import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.home.domain.HomeRepository
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
+import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class HomeRepositoryImpl @Inject constructor(
@@ -47,6 +47,7 @@ class HomeRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addToCart(product: ProductDto) {
+        val user = userDao.getUser().first() ?: return
         val sellerName = when (product.category.lowercase()) {
             "electronics" -> "Tech Gear Hub"
             "jewelery" -> "Elegance Gems"
@@ -54,7 +55,8 @@ class HomeRepositoryImpl @Inject constructor(
             else -> "${product.category.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }} Boutique"
         }
         productRepository.addToCart(
-            CartItem(
+            CartEntity(
+                userId = user.id,
                 productId = product.id,
                 title = product.title,
                 price = product.price,
@@ -77,5 +79,5 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getCartItems(): Flow<List<CartItem>> = productRepository.getCartItems()
+    override fun getCartItems(): Flow<List<CartEntity>> = productRepository.getCartItems()
 }

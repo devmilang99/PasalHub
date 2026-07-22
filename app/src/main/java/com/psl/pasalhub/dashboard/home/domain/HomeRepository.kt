@@ -16,5 +16,5 @@ interface HomeRepository {
     suspend fun toggleFavorite(productId: Int)
     suspend fun addToCart(product: ProductDto)
     suspend fun removeFromCart(productId: Int)
-    fun getCartItems(): Flow<List<com.psl.pasalhub.core.database.data.CartItem>>
+    fun getCartItems(): Flow<List<com.psl.pasalhub.core.database.data.CartEntity>>
 }

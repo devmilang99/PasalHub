@@ -12,8 +12,11 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.exceptions.HttpRequestException
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.CancellationException
+import java.net.UnknownHostException
 
 @HiltWorker
 class SupabaseSyncWorker @AssistedInject constructor(
@@ -46,8 +49,27 @@ class SupabaseSyncWorker @AssistedInject constructor(
                 Log.w("SupabaseSyncWorker", "No products found in remote database.")
             }
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpRequestException) {
+            val isNetworkIssue = e.cause is UnknownHostException ||
+                    e.message?.contains("Unable to resolve host", ignoreCase = true) == true
+
+            if (isNetworkIssue) {
+                Log.w(
+                    "SupabaseSyncWorker",
+                    "Product sync failed due to network resolution: ${e.message}. Will retry."
+                )
+            } else {
+                Log.e("SupabaseSyncWorker", "Product sync failed with HTTP error: ${e.message}", e)
+            }
+            Result.retry()
         } catch (e: Exception) {
-            Log.e("SupabaseSyncWorker", "Product sync failed: ${e.message}", e)
+            Log.e(
+                "SupabaseSyncWorker",
+                "Product sync failed with unexpected error: ${e.message}",
+                e
+            )
             Result.retry()
         }
     }
