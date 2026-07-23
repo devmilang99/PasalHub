@@ -18,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
     private val repository: ProductRepository,
+    private val profileRepository: com.psl.pasalhub.dashboard.profile.domain.ProfileRepository,
     private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
 
@@ -111,11 +112,10 @@ class ProductDetailViewModel @Inject constructor(
             appPrefs.emitNotification("Order placed successfully!")
 
             // Rewards simulation
-            val email = user?.email ?: "guest"
-            val pointsReward = (finalTotal / 10).toInt().coerceAtLeast(50)
-            val pointsPrefs = context.getSharedPreferences("pasalhub_points", Context.MODE_PRIVATE)
-            val currentPoints = pointsPrefs.getInt("pts_$email", 250)
-            pointsPrefs.edit().putInt("pts_$email", currentPoints + pointsReward).apply()
+            user?.let { u ->
+                val pointsReward = (finalTotal / 10).toInt().coerceAtLeast(50)
+                profileRepository.addPoints(u.id, pointsReward, "Reward for Order #${orderId}")
+            }
         }
     }
 }

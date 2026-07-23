@@ -2,12 +2,15 @@ package com.psl.pasalhub.dashboard.home.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.dashboard.home.domain.HomeRepository
 import com.psl.pasalhub.dashboard.products.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +70,14 @@ class HomeViewModel @Inject constructor(
         category != "all" || price < 500f || location != "All Locations" || sort != "Relevance"
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+    val paginatedProducts: Flow<PagingData<ProductDto>> = combine(
+        _selectedCategory,
+        _refreshTrigger
+    ) { category, _ ->
+        repository.getProductsPaged(category).cachedIn(viewModelScope)
+    }.flatMapLatest { it }
 
     @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
     val homeProductsState: StateFlow<Resource<List<ProductDto>>> = combine(

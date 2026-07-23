@@ -99,4 +99,10 @@ class AppPreferencesRepositoryImpl @Inject constructor(
     override suspend fun emitGlobalError(error: AppError?) {
         _globalError.value = error
     }
+
+    override fun getLastProductsSyncTime(): Long = prefs.getLong("last_products_sync_time", 0L)
+
+    override suspend fun setLastProductsSyncTime(timestamp: Long) {
+        prefs.edit { putLong("last_products_sync_time", timestamp) }
+    }
 }

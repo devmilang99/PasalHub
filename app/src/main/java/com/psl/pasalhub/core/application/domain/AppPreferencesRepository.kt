@@ -16,4 +16,7 @@ interface AppPreferencesRepository {
 
     fun getGlobalError(): Flow<AppError?>
     suspend fun emitGlobalError(error: AppError?)
+
+    fun getLastProductsSyncTime(): Long
+    suspend fun setLastProductsSyncTime(timestamp: Long)
 }

@@ -10,9 +10,12 @@ import com.psl.pasalhub.BuildConfig
         CartEntity::class,
         OrderEntity::class,
         ProductEntity::class,
-        FavoriteEntity::class
+        FavoriteEntity::class,
+        PointTransactionEntity::class,
+        ProductRemoteKeys::class,
+        OrderRemoteKeys::class
     ],
-    version = BuildConfig.DATABASE_VERSION,
+    version = 2,
     exportSchema = true,
     autoMigrations = []
 )
@@ -23,6 +26,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun orderDao(): OrderDao
     abstract fun productDao(): ProductDao
     abstract fun favoriteDao(): FavoriteDao
+    abstract fun pointDao(): PointDao
+    abstract fun remoteKeysDao(): RemoteKeysDao
 
     companion object {
         const val LINKED_DB_VERSION = BuildConfig.DATABASE_VERSION

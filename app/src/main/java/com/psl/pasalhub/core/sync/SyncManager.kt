@@ -14,6 +14,7 @@ import com.psl.pasalhub.dashboard.cart.sync.CartSyncWorker
 import com.psl.pasalhub.dashboard.order.sync.OrderSyncWorker
 import com.psl.pasalhub.dashboard.products.sync.FavoriteSyncWorker
 import com.psl.pasalhub.dashboard.products.sync.SupabaseSyncWorker
+import com.psl.pasalhub.dashboard.profile.sync.ProfileSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -42,7 +43,9 @@ class SyncManager @Inject constructor(
     private fun getSyncStatusFlow(uniqueWorkName: String): Flow<Boolean> {
         return workManager.getWorkInfosForUniqueWorkFlow(uniqueWorkName)
             .map { workInfos ->
-                workInfos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
+                // Only show refreshing state when actively RUNNING.
+                // ENQUEUED can stay stuck if network is unavailable or waiting for retry.
+                workInfos.any { it.state == WorkInfo.State.RUNNING }
             }
             .distinctUntilChanged()
     }
@@ -56,6 +59,50 @@ class SyncManager @Inject constructor(
         triggerSync(SyncType.ORDERS, fetch)
         triggerSync(SyncType.FAVORITES, fetch)
         triggerSync(SyncType.PRODUCTS, fetch)
+    }
+
+    /**
+     * Triggers a sequential multi-step sync chain for login.
+     * Products -> Favorites -> Cart -> Orders -> Profile
+     */
+    fun triggerLoginSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val inputData = Data.Builder()
+            .putBoolean("fetch", true)
+            .build()
+
+        // Create sequential chain: Profile -> Products -> Favorites -> Cart -> Orders
+        workManager.beginUniqueWork(
+            "login_sync_chain",
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequest.Builder(ProfileSyncWorker::class.java)
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build()
+        ).then(
+            OneTimeWorkRequest.Builder(SupabaseSyncWorker::class.java)
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build()
+        ).then(
+            OneTimeWorkRequest.Builder(FavoriteSyncWorker::class.java)
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build()
+        ).then(
+            OneTimeWorkRequest.Builder(CartSyncWorker::class.java)
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build()
+        ).then(
+            OneTimeWorkRequest.Builder(OrderSyncWorker::class.java)
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build()
+        ).enqueue()
     }
 
     fun schedulePeriodicSync() {
@@ -83,8 +130,8 @@ class SyncManager @Inject constructor(
             SyncType.FAVORITES -> FavoriteSyncWorker::class.java
             SyncType.ORDERS -> OrderSyncWorker::class.java
             SyncType.PRODUCTS -> SupabaseSyncWorker::class.java
-            else -> null
-        } ?: return
+            SyncType.PROFILE -> ProfileSyncWorker::class.java
+        }
 
         val inputData = Data.Builder()
             .putBoolean("fetch", fetch)

@@ -6,7 +6,9 @@ import com.psl.pasalhub.core.database.data.AppDatabase
 import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.FavoriteDao
 import com.psl.pasalhub.core.database.data.OrderDao
+import com.psl.pasalhub.core.database.data.PointDao
 import com.psl.pasalhub.core.database.data.ProductDao
+import com.psl.pasalhub.core.database.data.RemoteKeysDao
 import com.psl.pasalhub.core.database.data.UserDao
 import dagger.Module
 import dagger.Provides
@@ -45,4 +47,10 @@ object DatabaseModule {
 
     @Provides
     fun provideFavoriteDao(db: AppDatabase): FavoriteDao = db.favoriteDao()
+
+    @Provides
+    fun providePointDao(db: AppDatabase): PointDao = db.pointDao()
+
+    @Provides
+    fun provideRemoteKeysDao(db: AppDatabase): RemoteKeysDao = db.remoteKeysDao()
 }

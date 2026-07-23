@@ -1,11 +1,16 @@
 package com.psl.pasalhub.dashboard.order.data
 
 import android.content.Context
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.database.data.AppDatabase
 import com.psl.pasalhub.core.database.data.OrderDao
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.core.sync.SyncManager
@@ -19,6 +24,8 @@ import javax.inject.Inject
 
 class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
+    private val database: AppDatabase,
+    private val supabaseClient: io.github.jan.supabase.SupabaseClient,
     @ApplicationContext private val context: Context,
     private val appPrefs: AppPreferencesRepository,
     private val syncManager: SyncManager
@@ -27,6 +34,27 @@ class OrderRepositoryImpl @Inject constructor(
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
 
     override fun getOrders(): Flow<List<OrderEntity>> = orderDao.getOrders()
+
+    override fun getOrdersPaged(statuses: List<String>?): Flow<PagingData<OrderEntity>> {
+        @OptIn(ExperimentalPagingApi::class)
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                enablePlaceholders = false
+            ),
+            remoteMediator = OrderRemoteMediator(
+                supabaseClient = supabaseClient,
+                database = database
+            ),
+            pagingSourceFactory = {
+                if (statuses.isNullOrEmpty()) {
+                    orderDao.getOrdersPaged()
+                } else {
+                    orderDao.getOrdersByStatusPaged(statuses)
+                }
+            }
+        ).flow
+    }
 
     override fun isDarkTheme(): Flow<Boolean> = appPrefs.isDarkTheme()
 

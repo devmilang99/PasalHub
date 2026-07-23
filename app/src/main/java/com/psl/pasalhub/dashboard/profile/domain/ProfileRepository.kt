@@ -10,6 +10,9 @@ interface ProfileRepository {
     fun getFavoriteIds(): Flow<Set<Int>>
     fun getProducts(): Flow<Resource<List<ProductDto>>>
     fun getMemberPoints(email: String): Flow<Int>
+    fun getPointHistory(userId: String): Flow<List<com.psl.pasalhub.core.database.data.PointTransactionEntity>>
+    fun getPointHistoryPaged(userId: String): Flow<androidx.paging.PagingData<com.psl.pasalhub.core.database.data.PointTransactionEntity>>
+    suspend fun addPoints(userId: String, amount: Int, reason: String)
     fun getPassword(email: String): Flow<String>
     fun isDarkTheme(): Flow<Boolean>
     suspend fun updateAddress(address: String)

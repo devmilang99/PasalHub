@@ -118,6 +118,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        mlModelBinding = true
     }
     sourceSets {
         getByName("main") {
@@ -182,6 +183,9 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.okhttp)
     implementation(libs.play.services.location)
+    implementation(libs.tensorflow.lite.metadata)
+    implementation(libs.tensorflow.lite.support)
+    implementation(libs.tensorflow.lite)
     testImplementation(libs.androidx.core)
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)
@@ -202,6 +206,9 @@ dependencies {
     implementation(libs.hilt.work)
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.room.paging)
     ksp(libs.androidx.appfunctions.compiler)
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.androidx.compiler)

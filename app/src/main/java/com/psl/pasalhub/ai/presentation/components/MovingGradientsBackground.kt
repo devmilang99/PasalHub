@@ -29,11 +29,11 @@ import kotlin.math.sin
 private const val SHADER_SRC = """
     uniform float2 iResolution;
     uniform float iTime;
-    uniform layout(color) vec4 iColor1;
-    uniform layout(color) vec4 iColor2;
-    uniform layout(color) vec4 iColor3;
+    layout(color) uniform half4 iColor1;
+    layout(color) uniform half4 iColor2;
+    layout(color) uniform half4 iColor3;
 
-    vec4 main(float2 fragCoord) {
+    half4 main(float2 fragCoord) {
         float2 uv = fragCoord / iResolution.xy;
         float2 p = -1.0 + 2.0 * uv;
         p.x *= iResolution.x / iResolution.y;
@@ -59,13 +59,14 @@ fun MovingGradientsBackground(
     isDark: Boolean = false
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "background")
-    val duration = if (isProcessing) 4000 else 10000
+    val duration = if (isProcessing) 12000 else 24000
 
+    // Use 2 * PI * N for seamless looping in shaders
     val time by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 100f, // Use a larger range for smoother shader time
+        targetValue = Math.PI.toFloat() * 20f,
         animationSpec = infiniteRepeatable(
-            animation = tween(duration * 10, easing = LinearEasing),
+            animation = tween(duration, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "time"
@@ -79,7 +80,7 @@ fun MovingGradientsBackground(
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         ShaderBackground(
-            time = time,
+            timeProvider = { time },
             color1 = color1,
             color2 = color2,
             color3 = color3,
@@ -87,7 +88,7 @@ fun MovingGradientsBackground(
         )
     } else {
         FallbackCanvasBackground(
-            time = time / 10f, // Adjust scale for canvas
+            timeProvider = { time / 10f }, // Adjust scale for canvas
             color1 = color1,
             color2 = color2,
             color3 = color3,
@@ -99,7 +100,7 @@ fun MovingGradientsBackground(
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 private fun ShaderBackground(
-    time: Float,
+    timeProvider: () -> Float,
     color1: Color,
     color2: Color,
     color3: Color,
@@ -113,13 +114,13 @@ private fun ShaderBackground(
             .graphicsLayer() // GPU Layer isolation
             .drawWithCache {
                 shader.setFloatUniform("iResolution", size.width, size.height)
-                shader.setFloatUniform("iTime", time)
                 shader.setColorUniform("iColor1", color1.toArgb())
                 shader.setColorUniform("iColor2", color2.toArgb())
                 shader.setColorUniform("iColor3", color3.toArgb())
 
                 val brush = ShaderBrush(shader)
                 onDrawBehind {
+                    shader.setFloatUniform("iTime", timeProvider())
                     drawRect(brush)
                 }
             }
@@ -130,7 +131,7 @@ private fun ShaderBackground(
 
 @Composable
 private fun FallbackCanvasBackground(
-    time: Float,
+    timeProvider: () -> Float,
     color1: Color,
     color2: Color,
     color3: Color,
@@ -139,6 +140,7 @@ private fun FallbackCanvasBackground(
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
+        val time = timeProvider()
 
         drawRect(color = color1)
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TypewriterText(
@@ -33,7 +34,7 @@ fun TypewriterText(
         textToDisplay = ""
         text.forEachIndexed { index, _ ->
             textToDisplay = text.substring(0, index + 1)
-            delay(delayMillis)
+            delay(delayMillis.milliseconds)
         }
         onAnimationFinish()
     }

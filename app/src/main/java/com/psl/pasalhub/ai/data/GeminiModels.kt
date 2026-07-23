@@ -21,20 +21,32 @@ data class Content(
 @Serializable
 data class Part(
     val text: String? = null,
-    @SerialName("function_call") val functionCall: FunctionCall? = null,
-    @SerialName("function_response") val functionResponse: FunctionResponse? = null
+    @SerialName("inline_data") val inlineData: InlineData? = null,
+    @SerialName("function_call") val functionCallLegacy: FunctionCall? = null,
+    val functionCall: FunctionCall? = null,
+    @SerialName("function_response") val functionResponseLegacy: FunctionResponse? = null,
+    val functionResponse: FunctionResponse? = null,
+    val thoughtSignature: String? = null
+)
+
+@Serializable
+data class InlineData(
+    @SerialName("mime_type") val mimeType: String,
+    val data: String
 )
 
 @Serializable
 data class FunctionCall(
     val name: String,
-    val args: JsonObject? = null
+    val args: JsonObject? = null,
+    val id: String? = null
 )
 
 @Serializable
 data class FunctionResponse(
     val name: String,
-    val response: JsonObject
+    val response: JsonObject,
+    val id: String? = null
 )
 
 @Serializable

@@ -2,10 +2,13 @@ package com.psl.pasalhub.dashboard.order.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.dashboard.order.domain.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -21,6 +24,21 @@ class OrderViewModel @Inject constructor(
 
     val ordersState: StateFlow<List<OrderEntity>> = repository.getOrders()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val recentOrdersPaged: Flow<PagingData<OrderEntity>> = repository.getOrdersPaged(
+        listOf("Placing", "Placed", "Packaging", "Sent for Delivery")
+    ).cachedIn(viewModelScope)
+
+    val completedOrdersPaged: Flow<PagingData<OrderEntity>> = repository.getOrdersPaged(
+        listOf("Delivered", "Completed")
+    ).cachedIn(viewModelScope)
+
+    val cancelledOrdersPaged: Flow<PagingData<OrderEntity>> = repository.getOrdersPaged(
+        listOf("Cancelled")
+    ).cachedIn(viewModelScope)
+
+    val ordersPaged: Flow<PagingData<OrderEntity>> = repository.getOrdersPaged()
+        .cachedIn(viewModelScope)
 
     val isDarkTheme: StateFlow<Boolean> = repository.isDarkTheme()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)

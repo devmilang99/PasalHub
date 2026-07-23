@@ -8,12 +8,18 @@ import com.psl.pasalhub.core.database.data.FavoriteEntity
 import com.psl.pasalhub.core.database.data.OrderDao
 import com.psl.pasalhub.core.database.data.OrderEntity
 import com.psl.pasalhub.core.database.data.UserDao
+import com.psl.pasalhub.core.database.data.UserEntity
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -290,6 +296,109 @@ class DataSyncRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("DataSyncRepository", "Order sync failed: ${e.message}", e)
+            throw e
+        }
+    }
+
+    suspend fun syncProfile(fetchFromRemote: Boolean = true) {
+        val user = supabaseClient.auth.currentUserOrNull() ?: return
+        Log.d("DataSyncRepository", "Profile sync (fetch=$fetchFromRemote) for user: ${user.email}")
+
+        try {
+            if (fetchFromRemote) {
+                // Fetch profile from Postgrest
+                val profile = supabaseClient.postgrest["profiles"]
+                    .select(columns = Columns.ALL) {
+                        filter {
+                            eq("id", user.id)
+                        }
+                    }
+                    .decodeSingle<Map<String, JsonElement?>>()
+
+                val name = profile["name"]?.jsonPrimitive?.content ?: ""
+                val dob = profile["date_of_birth"]?.jsonPrimitive?.content ?: ""
+                val address = profile["address"]?.jsonPrimitive?.content ?: ""
+                val isComplete =
+                    profile["is_profile_complete"]?.jsonPrimitive?.booleanOrNull ?: false
+                val isOnboardingDone =
+                    profile["onboarding_done"]?.jsonPrimitive?.booleanOrNull ?: false
+
+                val existingLocalUser = userDao.getUserById(user.id)
+                val hasSynced = existingLocalUser?.hasSyncedCart ?: false
+                val hasSyncedFav = existingLocalUser?.hasSyncedFavorites ?: false
+
+                // More resilient Google user detection
+                val providerFromAppMetadata =
+                    user.appMetadata?.get("provider")?.jsonPrimitive?.content
+                val providerFromUserMetadata = user.userMetadata?.get("iss")?.jsonPrimitive?.content
+                val isGoogle = providerFromAppMetadata == "google" ||
+                        providerFromUserMetadata?.contains("google") == true ||
+                        user.identities?.any { it.provider == "google" } == true
+
+                val userEntity = UserEntity(
+                    id = user.id,
+                    email = user.email ?: "",
+                    name = name,
+                    dateOfBirth = dob,
+                    address = address,
+                    isRemembered = true,
+                    isGoogleUser = isGoogle,
+                    profileImage = user.userMetadata?.get("avatar_url")?.toString()
+                        ?.removeSurrounding("\""),
+                    isProfileComplete = isComplete,
+                    hasSyncedCart = hasSynced,
+                    hasSyncedFavorites = hasSyncedFav,
+                    isOnboardingDone = isOnboardingDone
+                )
+                userDao.insertUser(userEntity)
+                Log.d("DataSyncRepository", "Successfully synced profile from remote.")
+            } else {
+                // Local -> Remote (Upsert local profile to Supabase)
+                val localUser = userDao.getUserById(user.id) ?: return
+                val profileData = kotlinx.serialization.json.buildJsonObject {
+                    put("id", localUser.id)
+                    put("email", localUser.email)
+                    put("name", localUser.name)
+                    put("address", localUser.address)
+                    put("date_of_birth", localUser.dateOfBirth)
+                    put("is_profile_complete", localUser.isProfileComplete)
+                    put("onboarding_done", localUser.isOnboardingDone)
+                }
+                supabaseClient.postgrest["profiles"].upsert(profileData)
+                Log.d("DataSyncRepository", "Successfully pushed profile to remote.")
+            }
+        } catch (e: Exception) {
+            Log.e("DataSyncRepository", "Profile sync failed: ${e.message}", e)
+            if (fetchFromRemote) {
+                // Fallback for new users or offline login
+                val existingLocalUser = userDao.getUserById(user.id)
+                val hasSynced = existingLocalUser?.hasSyncedCart ?: false
+                val hasSyncedFav = existingLocalUser?.hasSyncedFavorites ?: false
+
+                // More resilient Google user detection
+                val providerFromAppMetadata =
+                    user.appMetadata?.get("provider")?.jsonPrimitive?.content
+                val providerFromUserMetadata = user.userMetadata?.get("iss")?.jsonPrimitive?.content
+                val isGoogle = providerFromAppMetadata == "google" ||
+                        providerFromUserMetadata?.contains("google") == true ||
+                        user.identities?.any { it.provider == "google" } == true
+
+                val userEntity = UserEntity(
+                    id = user.id,
+                    email = user.email ?: "",
+                    name = user.userMetadata?.get("full_name")?.jsonPrimitive?.content ?: "",
+                    dateOfBirth = "",
+                    address = "",
+                    isRemembered = true,
+                    isGoogleUser = isGoogle,
+                    profileImage = user.userMetadata?.get("avatar_url")?.jsonPrimitive?.content,
+                    isProfileComplete = false,
+                    hasSyncedCart = hasSynced,
+                    hasSyncedFavorites = hasSyncedFav
+                )
+                userDao.insertUser(userEntity)
+                Log.d("DataSyncRepository", "Using fallback profile local data.")
+            }
             throw e
         }
     }

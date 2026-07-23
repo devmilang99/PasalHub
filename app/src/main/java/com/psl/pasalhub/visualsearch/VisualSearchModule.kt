@@ -1,7 +1,6 @@
-package com.psl.pasalhub.core.di
+package com.psl.pasalhub.visualsearch
 
 import android.content.Context
-import com.psl.pasalhub.core.application.utils.NotificationHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,11 +10,11 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+object VisualSearchModule {
 
     @Provides
     @Singleton
-    fun provideNotificationHelper(@ApplicationContext context: Context): NotificationHelper {
-        return NotificationHelper(context)
+    fun provideVisualSearchEngine(@ApplicationContext context: Context): VisualSearchEngine {
+        return VisualSearchEngine(context)
     }
 }

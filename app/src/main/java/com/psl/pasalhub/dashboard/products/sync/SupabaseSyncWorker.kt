@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.ProductDao
 import com.psl.pasalhub.core.database.data.ProductEntity
 import com.psl.pasalhub.core.database.data.UserDao
@@ -24,7 +25,8 @@ class SupabaseSyncWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val supabaseClient: SupabaseClient,
     private val productDao: ProductDao,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val appPreferencesRepository: AppPreferencesRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val postgrest = supabaseClient.postgrest
@@ -41,9 +43,11 @@ class SupabaseSyncWorker @AssistedInject constructor(
             Log.d("SupabaseSyncWorker", "Fetched ${remoteProducts.size} products from Supabase")
             if (remoteProducts.isNotEmpty()) {
                 productDao.insertProducts(remoteProducts)
+                val timestamp = System.currentTimeMillis()
                 if (user != null) {
-                    userDao.updateLastSyncTime(user.id, System.currentTimeMillis())
+                    userDao.updateLastSyncTime(user.id, timestamp)
                 }
+                appPreferencesRepository.setLastProductsSyncTime(timestamp)
                 Log.d("SupabaseSyncWorker", "Successfully cached products locally.")
             } else {
                 Log.w("SupabaseSyncWorker", "No products found in remote database.")

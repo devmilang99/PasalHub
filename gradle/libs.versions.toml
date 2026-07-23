@@ -17,6 +17,7 @@ navigationCompose = "2.9.8"
 roomRuntime = "2.8.4"
 roomKtx = "2.8.4"
 roomCompiler = "2.8.4"
+paging = "3.5.0"
 kotlinxCoroutinesTest = "1.11.0"
 core = "1.7.0"
 runner = "1.7.0"
@@ -60,6 +61,9 @@ googleServices = "4.5.0"
 generativeai = "0.9.0"
 appfunctions = "1.0.0-alpha10"
 appfunctions-service = "1.0.0-alpha09"
+tensorflowLiteSupport = "0.5.0"
+tensorflowLiteMetadata = "0.2.0"
+tensorflowLite = "2.17.0"
 
 
 
@@ -147,6 +151,13 @@ androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomato
 androidx-appfunctions = { group = "androidx.appfunctions", name = "appfunctions", version.ref = "appfunctions" }
 androidx-appfunctions-service = { group = "androidx.appfunctions", name = "appfunctions-service", version.ref = "appfunctions-service" }
 androidx-appfunctions-compiler = { group = "androidx.appfunctions", name = "appfunctions-compiler", version.ref = "appfunctions" }
+
+androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", version.ref = "paging" }
+androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
+androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "roomRuntime" }
+tensorflow-lite-support = { group = "org.tensorflow", name = "tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
+tensorflow-lite-metadata = { group = "org.tensorflow", name = "tensorflow-lite-metadata", version.ref = "tensorflowLiteMetadata" }
+tensorflow-lite = { group = "org.tensorflow", name = "tensorflow-lite", version.ref = "tensorflowLite" }
 
 
 [plugins]

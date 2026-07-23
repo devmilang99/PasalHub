@@ -1,7 +1,16 @@
 package com.psl.pasalhub.ai.presentation
 
+import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -51,6 +60,8 @@ import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.SportsEsports
@@ -89,6 +100,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
@@ -99,16 +111,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.psl.pasalhub.ai.presentation.components.AiChatBubble
 import com.psl.pasalhub.ai.presentation.components.AiListeningAnimation
 import com.psl.pasalhub.ai.presentation.components.MovingGradientsBackground
-import com.psl.pasalhub.ai.presentation.components.TypewriterText
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.products.repository.Resource
 import com.psl.pasalhub.ui.theme.LocalDimens
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalPermissionsApi::class
+)
 @Composable
 fun AISearchScreen(
     viewModel: MainViewModel,
@@ -126,6 +145,29 @@ fun AISearchScreen(
     val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let { aiViewModel.performVisualSearch(it) }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(context.contentResolver, it)
+                ImageDecoder.decodeBitmap(source)
+            } else {
+                MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+            }
+            aiViewModel.performVisualSearch(bitmap)
+        }
+    }
 
     val user by viewModel.currentUser.collectAsStateWithLifecycle()
     val username = user?.name?.split(" ")?.firstOrNull() ?: "Explorer"
@@ -264,37 +306,19 @@ fun AISearchScreen(
                     }
                 }
 
-                // Modern Search Bar
-                SearchInputBar(
-                    query = searchQuery,
-                    onQueryChange = {
-                        searchQuery = it
-                        if (it.isEmpty()) aiViewModel.clearSearch()
-                    },
-                    isProcessing = isAiProcessing,
-                    onFocusChange = { isSearchFocused = it },
-                    onSearch = {
-                        if (searchQuery.isNotBlank()) {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            aiViewModel.performAiSearch(searchQuery)
-                        }
-                    }
-                )
-
-                // Suggestions below search bar when focused and keyboard is visible
+                // Suggestions above search bar when focused and keyboard is visible
                 AnimatedVisibility(
                     visible = isSearchFocused && isKeyboardVisible && !isAiProcessing,
-                    enter = slideInVertically { -it } + fadeIn(),
-                    exit = slideOutVertically { -it } + fadeOut()
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 16.dp)
+                            .padding(bottom = 8.dp)
                             .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                RoundedCornerShape(16.dp)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                RoundedCornerShape(20.dp)
                             )
                             .padding(12.dp)
                     ) {
@@ -303,7 +327,7 @@ fun AISearchScreen(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
                         )
                         Column(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -319,14 +343,14 @@ fun AISearchScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(12.dp))
                                         .clickable {
                                             searchQuery = suggestion
                                             aiViewModel.performAiSearch(suggestion)
                                             focusManager.clearFocus()
                                             isSearchFocused = false
                                         }
-                                        .padding(vertical = 10.dp, horizontal = 8.dp),
+                                        .padding(vertical = 12.dp, horizontal = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -346,6 +370,34 @@ fun AISearchScreen(
                         }
                     }
                 }
+
+                // Modern Search Bar
+                SearchInputBar(
+                    query = searchQuery,
+                    onQueryChange = {
+                        searchQuery = it
+                        if (it.isEmpty()) aiViewModel.clearSearch()
+                    },
+                    isProcessing = isAiProcessing,
+                    onFocusChange = { isSearchFocused = it },
+                    onCameraClick = {
+                        if (cameraPermissionState.status.isGranted) {
+                            cameraLauncher.launch()
+                        } else {
+                            cameraPermissionState.launchPermissionRequest()
+                        }
+                    },
+                    onGalleryClick = {
+                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onSearch = {
+                        if (searchQuery.isNotBlank()) {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            aiViewModel.performAiSearch(searchQuery)
+                        }
+                    }
+                )
             }
         }
 
@@ -431,6 +483,8 @@ fun SearchInputBar(
     onQueryChange: (String) -> Unit,
     isProcessing: Boolean,
     onFocusChange: (Boolean) -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit,
     onSearch: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -498,6 +552,23 @@ fun SearchInputBar(
                 enabled = !isProcessing
             )
 
+            if (query.isEmpty() && !isProcessing) {
+                IconButton(onClick = onCameraClick) {
+                    Icon(
+                        Icons.Rounded.PhotoCamera,
+                        contentDescription = "Camera",
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                }
+                IconButton(onClick = onGalleryClick) {
+                    Icon(
+                        Icons.Rounded.Image,
+                        contentDescription = "Gallery",
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
             AnimatedVisibility(visible = query.isNotEmpty() && !isProcessing) {
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
@@ -547,15 +618,16 @@ fun ResultsOrHistory(
         verticalArrangement = Arrangement.spacedBy(LocalDimens.current.small),
         contentPadding = PaddingValues(top = 4.dp, bottom = LocalDimens.current.medium)
     ) {
+        // AI response should always be shown if it exists
+        if (recommendationMessage != null) {
+            item {
+                AiChatBubble(message = recommendationMessage)
+            }
+        }
+
         when {
             productsState is Resource.Success && productsState.data.isNotEmpty() -> {
                 val products = productsState.data
-                recommendationMessage?.let { message ->
-                    item {
-                        AiResponseBubble(message = message)
-                    }
-                }
-
                 item {
                     Text(
                         "Top recommendations",
@@ -581,7 +653,10 @@ fun ResultsOrHistory(
             }
 
             productsState is Resource.Success && searchQuery.isNotEmpty() -> {
-                item { EmptyResultsView(query = searchQuery) }
+                // Only show empty view if we don't have a message or we explicitly want to show it
+                if (recommendationMessage == null) {
+                    item { EmptyResultsView(query = searchQuery) }
+                }
             }
 
             productsState is Resource.Error -> {
@@ -754,36 +829,6 @@ fun ActionCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-fun AiResponseBubble(message: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(
-            topStart = 4.dp,
-            topEnd = 24.dp,
-            bottomStart = 24.dp,
-            bottomEnd = 24.dp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Icon(
-                Icons.Rounded.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            TypewriterText(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                lineHeight = 20.sp
             )
         }
     }

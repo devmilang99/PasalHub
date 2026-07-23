@@ -1,10 +1,17 @@
 package com.psl.pasalhub.dashboard.products.repository
 
 import android.content.Context
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.database.data.AppDatabase
 import com.psl.pasalhub.core.database.data.CartDao
 import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.database.data.OrderDao
@@ -21,6 +28,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +45,9 @@ class ProductRepository @Inject constructor(
     private val orderDao: OrderDao,
     private val productDao: ProductDao,
     private val syncManager: SyncManager,
+    private val appPreferencesRepository: AppPreferencesRepository,
+    private val database: AppDatabase,
+    private val supabaseClient: io.github.jan.supabase.SupabaseClient,
     @ApplicationContext private val context: Context
 ) {
     private val FRESHNESS_THRESHOLD = 24 * 60 * 60 * 1000L // 24 hours
@@ -44,18 +55,20 @@ class ProductRepository @Inject constructor(
     fun getProducts(): Flow<Resource<List<ProductDto>>> = flow {
         emit(Resource.Loading)
 
-        val user = userDao.getUser().first()
-        val lastSync = user?.lastFullSyncTime ?: 0L
+        val lastSync = appPreferencesRepository.getLastProductsSyncTime()
         val isStale = System.currentTimeMillis() - lastSync > FRESHNESS_THRESHOLD
 
+        // Only trigger sync once per flow collection if stale or empty
+        var syncTriggered = false
+
         productDao.getAllProducts().collect { entities ->
-            if (entities.isEmpty() || isStale) {
+            if ((entities.isEmpty() || isStale) && !syncTriggered) {
+                syncTriggered = true
                 syncProducts()
-                if (entities.isEmpty()) {
-                    emit(Resource.Loading)
-                } else {
-                    emit(Resource.Success(entities.map { it.toDto() }))
-                }
+            }
+
+            if (entities.isEmpty() && syncTriggered) {
+                emit(Resource.Loading)
             } else {
                 emit(Resource.Success(entities.map { it.toDto() }))
             }
@@ -67,6 +80,33 @@ class ProductRepository @Inject constructor(
         val normalizedCategory = normalizeCategory(category)
         productDao.getProductsByCategory(normalizedCategory).collect { entities ->
             emit(Resource.Success(entities.map { it.toDto() }))
+        }
+    }
+
+    fun getProductsPaged(category: String? = null): Flow<PagingData<ProductDto>> {
+        val normalizedCategory = category?.let { normalizeCategory(it) }
+
+        @OptIn(ExperimentalPagingApi::class)
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false,
+                initialLoadSize = 20
+            ),
+            remoteMediator = com.psl.pasalhub.dashboard.products.data.ProductRemoteMediator(
+                supabaseClient = supabaseClient,
+                database = database,
+                category = normalizedCategory
+            ),
+            pagingSourceFactory = {
+                if (normalizedCategory == null || normalizedCategory == "all") {
+                    productDao.getProductsPaged()
+                } else {
+                    productDao.getProductsByCategoryPaged(normalizedCategory)
+                }
+            }
+        ).flow.map { pagingData: PagingData<ProductEntity> ->
+            pagingData.map { entity -> entity.toDto() }
         }
     }
 

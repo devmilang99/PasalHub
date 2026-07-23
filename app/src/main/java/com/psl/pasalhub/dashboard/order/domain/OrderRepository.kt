@@ -1,10 +1,12 @@
 package com.psl.pasalhub.dashboard.order.domain
 
+import androidx.paging.PagingData
 import com.psl.pasalhub.core.database.data.OrderEntity
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
     fun getOrders(): Flow<List<OrderEntity>>
+    fun getOrdersPaged(statuses: List<String>? = null): Flow<PagingData<OrderEntity>>
     fun isDarkTheme(): Flow<Boolean>
     suspend fun updateOrderStatus(orderId: Int, status: String)
     suspend fun updateOrderProgress(orderId: Int, progress: Int)

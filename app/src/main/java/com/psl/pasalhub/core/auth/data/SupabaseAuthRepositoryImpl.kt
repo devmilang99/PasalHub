@@ -4,7 +4,6 @@ import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.sync.SyncManager
-import com.psl.pasalhub.core.sync.SyncType
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
@@ -13,8 +12,6 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -119,73 +116,8 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         syncUserProfile()
     }
 
-    private suspend fun syncUserProfile() {
-        val user = auth.currentUserOrNull() ?: return
-
-        val existingLocalUser = userDao.getUserById(user.id)
-        val hasSynced = existingLocalUser?.hasSyncedCart ?: false
-
-        // More resilient Google user detection
-        val providerFromAppMetadata = user.appMetadata?.get("provider")?.jsonPrimitive?.content
-        val providerFromUserMetadata = user.userMetadata?.get("iss")?.jsonPrimitive?.content
-        val isGoogle = providerFromAppMetadata == "google" ||
-                providerFromUserMetadata?.contains("google") == true ||
-                user.identities?.any { it.provider == "google" } == true
-
-        try {
-            // Fetch profile from Postgrest
-            val profile = postgrest["profiles"]
-                .select {
-                    filter {
-                        eq("id", user.id)
-                    }
-                }
-                .decodeSingle<Map<String, JsonElement?>>()
-
-            val name = profile["name"]?.jsonPrimitive?.content ?: ""
-            val dob = profile["date_of_birth"]?.jsonPrimitive?.content ?: ""
-            val address = profile["address"]?.jsonPrimitive?.content ?: ""
-            val isComplete = profile["is_profile_complete"]?.jsonPrimitive?.booleanOrNull ?: false
-            val isOnboardingDone = profile["onboarding_done"]?.jsonPrimitive?.booleanOrNull ?: false
-
-            val userEntity = UserEntity(
-                id = user.id,
-                email = user.email ?: "",
-                name = name,
-                dateOfBirth = dob,
-                address = address,
-                isRemembered = true,
-                isGoogleUser = isGoogle,
-                profileImage = user.userMetadata?.get("avatar_url")?.toString()
-                    ?.removeSurrounding("\""),
-                isProfileComplete = isComplete,
-                hasSyncedCart = hasSynced,
-                isOnboardingDone = isOnboardingDone
-            )
-            userDao.insertUser(userEntity)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Fallback if profile doesn't exist yet
-            val userEntity = UserEntity(
-                id = user.id,
-                email = user.email ?: "",
-                name = user.userMetadata?.get("full_name")?.toString()?.removeSurrounding("\"")
-                    ?: "",
-                dateOfBirth = "",
-                address = "",
-                isRemembered = true,
-                isGoogleUser = isGoogle,
-                profileImage = user.userMetadata?.get("avatar_url")?.toString()
-                    ?.removeSurrounding("\""),
-                isProfileComplete = false,
-                hasSyncedCart = hasSynced
-            )
-            userDao.insertUser(userEntity)
-        }
-
-        // Trigger initial sync to restore cart/orders/favorites
-        syncManager.triggerSync(SyncType.CART, fetch = true)
-        syncManager.triggerSync(SyncType.ORDERS, fetch = true)
-        syncManager.triggerSync(SyncType.FAVORITES, fetch = true)
+    private fun syncUserProfile() {
+        // Trigger the sequential multi-step sync chain for login
+        syncManager.triggerLoginSync()
     }
 }

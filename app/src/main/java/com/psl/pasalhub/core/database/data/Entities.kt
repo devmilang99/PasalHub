@@ -87,3 +87,15 @@ data class OrderEntity(
     @SerialName("isSynced") val isSynced: Boolean = true,
     @ColumnInfo("updated_at") @SerialName("updated_at") @Serializable(with = TimestampSerializer::class) val updatedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "point_transactions")
+@Serializable
+@Immutable
+data class PointTransactionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @ColumnInfo(name = "user_id") val userId: String,
+    val amount: Int,
+    val reason: String,
+    @ColumnInfo(name = "timestamp") @Serializable(with = TimestampSerializer::class)
+    val timestamp: Long = System.currentTimeMillis()
+)

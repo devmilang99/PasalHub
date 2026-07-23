@@ -1,6 +1,7 @@
 package com.psl.pasalhub.dashboard.home.data
 
 import android.content.Context
+import androidx.paging.PagingData
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.CartEntity
 import com.psl.pasalhub.core.database.data.UserDao
@@ -25,6 +26,9 @@ class HomeRepositoryImpl @Inject constructor(
 
     override fun getProductsByCategory(category: String): Flow<Resource<List<ProductDto>>> =
         productRepository.getProductsByCategory(category)
+
+    override fun getProductsPaged(category: String?): Flow<PagingData<ProductDto>> =
+        productRepository.getProductsPaged(category)
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()
 

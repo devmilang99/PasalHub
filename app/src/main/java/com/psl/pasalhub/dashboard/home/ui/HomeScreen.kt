@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,6 +73,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.psl.pasalhub.R
@@ -117,6 +119,8 @@ fun HomeScreen(
     val cartItemIds by viewModel.cartItemIds.collectAsStateWithLifecycle()
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
 
+    val paginatedProducts = viewModel.paginatedProducts.collectAsLazyPagingItems()
+
     val dimens = LocalDimens.current
     val context = LocalContext.current
 
@@ -131,6 +135,12 @@ fun HomeScreen(
 
     LaunchedEffect(productsState) {
         if (productsState !is Resource.Loading) {
+            isRefreshing = false
+        }
+    }
+
+    LaunchedEffect(paginatedProducts.loadState.refresh) {
+        if (paginatedProducts.loadState.refresh !is LoadState.Loading) {
             isRefreshing = false
         }
     }
@@ -381,7 +391,7 @@ fun HomeScreen(
                 isRefreshing = isRefreshing,
                 onRefresh = {
                     isRefreshing = true
-                    viewModel.refreshProducts()
+                    paginatedProducts.refresh()
                 },
                 state = pullToRefreshState,
                 modifier = Modifier
@@ -563,54 +573,61 @@ fun HomeScreen(
                         }
                     }
 
-                    when (val resource = productsState) {
-                        is Resource.Loading -> {
-                            items(4) { ShimmerProductCard() }
+                    items(
+                        count = paginatedProducts.itemCount,
+                        key = paginatedProducts.itemKey { it.id }
+                    ) { index ->
+                        val product = paginatedProducts[index]
+                        if (product != null) {
+                            ProductCardItem(
+                                product = product,
+                                onProductClick = { onProductClick(product) },
+                                onAddClick = { viewModel.addToCart(product) },
+                                viewModel = viewModel,
+                                isInCart = cartItemIds.contains(product.id),
+                                isFavorited = favoriteIds.contains(product.id)
+                            )
                         }
+                    }
 
-                        is Resource.Error -> {
-                            item(span = { GridItemSpan(this.maxLineSpan) }) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        "Error: ${resource.message}",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                    // Handle LoadState for append (bottom of list)
+                    if (paginatedProducts.loadState.append is LoadState.Loading) {
+                        items(2) { ShimmerProductCard() }
+                    }
+
+                    if (paginatedProducts.loadState.refresh is LoadState.Loading && paginatedProducts.itemCount == 0) {
+                        items(6) { ShimmerProductCard() }
+                    }
+
+                    if (paginatedProducts.loadState.refresh is LoadState.Error && paginatedProducts.itemCount == 0) {
+                        val error = paginatedProducts.loadState.refresh as LoadState.Error
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Error: ${error.error.localizedMessage}",
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
+                    }
 
-                        is Resource.Success -> {
-                            val products = resource.data
-                            if (products.isEmpty()) {
-                                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "No items matching current criteria",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            } else {
-                                items(products, key = { it.id }) { product ->
-                                    ProductCardItem(
-                                        product = product,
-                                        onProductClick = { onProductClick(product) },
-                                        onAddClick = { viewModel.addToCart(product) },
-                                        viewModel = viewModel,
-                                        isInCart = cartItemIds.contains(product.id),
-                                        isFavorited = favoriteIds.contains(product.id)
-                                    )
-                                }
+                    if (paginatedProducts.loadState.refresh is LoadState.NotLoading && paginatedProducts.itemCount == 0) {
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No items matching current criteria",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

@@ -2,6 +2,8 @@ package com.psl.pasalhub.dashboard.profile.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.sync.SyncManager
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -49,6 +52,21 @@ class ProfileViewModel @Inject constructor(
     private val _memberPoints = MutableStateFlow(250)
     val memberPoints: StateFlow<Int> = _memberPoints.asStateFlow()
 
+    private val _pointHistory =
+        MutableStateFlow<List<com.psl.pasalhub.core.database.data.PointTransactionEntity>>(emptyList())
+    val pointHistory: StateFlow<List<com.psl.pasalhub.core.database.data.PointTransactionEntity>> =
+        _pointHistory.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val pointHistoryPaged: kotlinx.coroutines.flow.Flow<PagingData<com.psl.pasalhub.core.database.data.PointTransactionEntity>> =
+        currentUser.flatMapLatest { user ->
+            if (user != null) {
+                repository.getPointHistoryPaged(user.id).cachedIn(viewModelScope)
+            } else {
+                kotlinx.coroutines.flow.flowOf(PagingData.empty())
+            }
+        }
+
     private val _userPassword = MutableStateFlow("password")
     val userPassword: StateFlow<String> = _userPassword.asStateFlow()
 
@@ -57,9 +75,19 @@ class ProfileViewModel @Inject constructor(
 
     fun loadMemberPoints() {
         viewModelScope.launch {
-            currentUser.value?.email?.let { email ->
-                repository.getMemberPoints(email).collect {
+            currentUser.value?.let { user ->
+                repository.getMemberPoints(user.email).collect {
                     _memberPoints.value = it
+                }
+            }
+        }
+        viewModelScope.launch {
+            currentUser.value?.let { user ->
+                repository.getPointHistory(user.id).collect { history ->
+                    if (history.isEmpty()) {
+                        repository.addPoints(user.id, 250, "Welcome Bonus")
+                    }
+                    _pointHistory.value = history
                 }
             }
         }

@@ -1,5 +1,7 @@
 package com.psl.pasalhub.ai.presentation
 
+import android.graphics.Bitmap
+import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +9,7 @@ import com.psl.pasalhub.ai.data.Content
 import com.psl.pasalhub.ai.data.FunctionCall
 import com.psl.pasalhub.ai.data.FunctionResponse
 import com.psl.pasalhub.ai.data.GeminiSearchRouter
+import com.psl.pasalhub.ai.data.InlineData
 import com.psl.pasalhub.ai.data.Part
 import com.psl.pasalhub.ai.domain.model.SearchFields
 import com.psl.pasalhub.ai.domain.model.SearchIntent
@@ -14,6 +17,7 @@ import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.dashboard.products.repository.ProductRepository
 import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.visualsearch.VisualSearchEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -34,6 +39,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -41,6 +47,7 @@ import javax.inject.Inject
 class AiSearchViewModel @Inject constructor(
     private val repository: ProductRepository,
     private val geminiRouter: GeminiSearchRouter,
+    private val visualSearchEngine: VisualSearchEngine,
     private val appPrefs: AppPreferencesRepository
 ) : ViewModel() {
 
@@ -62,6 +69,19 @@ class AiSearchViewModel @Inject constructor(
 
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    init {
+        Log.d("AiSearchViewModel", "Initializing AI Search System...")
+        viewModelScope.launch {
+            try {
+                val modelList = geminiRouter.listAvailableModels()
+                val models = modelList.models.map { it.name.substringAfterLast("/") }
+                Log.d("AiSearchViewModel", "Available Gemini Models: $models")
+            } catch (e: Exception) {
+                Log.e("AiSearchViewModel", "Failed to list models: ${e.message}")
+            }
+        }
+    }
 
     // AI Products State (AI-driven filtering)
     val aiProductsState: StateFlow<Resource<List<ProductDto>>> = combine(
@@ -121,26 +141,97 @@ class AiSearchViewModel @Inject constructor(
         if (query.isBlank()) return
 
         _manualProductList.value = null
+        _aiSearchIntent.value = null
+        _recommendationMessage.value = null
+        _aiSearchError.value = null
+
         // Add to history
         val currentHistory = _searchHistory.value.toMutableList()
         currentHistory.remove(query)
         currentHistory.add(0, query)
         _searchHistory.value = currentHistory.take(5)
 
+        executeSearch(Content(role = "user", parts = listOf(Part(text = query))))
+    }
+
+    fun performVisualSearch(bitmap: Bitmap) {
+        _manualProductList.value = null
+
         viewModelScope.launch {
             _isAiProcessing.value = true
             _aiSearchError.value = null
-            _recommendationMessage.value = null
+            _recommendationMessage.value = "Processing image..."
+
+            try {
+                // 1. Local TFLite Embedding Extraction (for future vector search)
+                _recommendationMessage.value = "Extracting visual features..."
+                when (val result = visualSearchEngine.extractEmbeddings(bitmap)) {
+                    is VisualSearchEngine.VisualSearchResult.Success -> {
+                        Log.d(
+                            "AiSearchViewModel",
+                            "Visual Search: Local embeddings extracted (Size: ${result.embeddings.size})"
+                        )
+                    }
+
+                    is VisualSearchEngine.VisualSearchResult.InterpreterNull -> {
+                        Log.e("AiSearchViewModel", "Visual Search: Interpreter is null")
+                    }
+
+                    is VisualSearchEngine.VisualSearchResult.Error -> {
+                        Log.e(
+                            "AiSearchViewModel",
+                            "Visual Search extraction failed: ${result.message}"
+                        )
+                    }
+                }
+
+                // 2. Multi-modal identification via Gemini
+                _recommendationMessage.value = "Identifying product with AI..."
+                val base64Image = bitmapToBase64(bitmap)
+                val visualContent = Content(
+                    role = "user",
+                    parts = listOf(
+                        Part(text = "Identify the product in this image and search for similar items in the catalog. Be concise."),
+                        Part(inlineData = InlineData(mimeType = "image/jpeg", data = base64Image))
+                    )
+                )
+
+                executeSearch(visualContent)
+            } catch (e: Exception) {
+                Log.e("AiSearchViewModel", "Visual Search failed", e)
+                _aiSearchError.value = "Failed to process image."
+                _isAiProcessing.value = false
+            }
+        }
+    }
+
+    private fun executeSearch(userContent: Content) {
+        viewModelScope.launch {
+            _isAiProcessing.value = true
+            _aiSearchError.value = null
             _aiSearchIntent.value = null
 
             try {
-                _chatHistory.add(Content(role = "user", parts = listOf(Part(text = query))))
+                _chatHistory.add(userContent)
                 var response = geminiRouter.routeSearchWithContent(_chatHistory)
 
                 // Function Calling Loop
                 var candidate = response.candidates?.firstOrNull()
+                val partsReceived = candidate?.content?.parts ?: emptyList()
+                Log.d(
+                    "AiSearchViewModel",
+                    "Gemini response received. FinishReason: ${candidate?.finishReason}, Parts: ${partsReceived.size}"
+                )
+                partsReceived.forEachIndexed { index, part ->
+                    val hasCall = part.functionCall != null || part.functionCallLegacy != null
+                    Log.d(
+                        "AiSearchViewModel",
+                        "Part $index: text='${part.text}', hasCall=$hasCall, id=${part.functionCall?.id ?: part.functionCallLegacy?.id}"
+                    )
+                }
+
                 var parts = candidate?.content?.parts ?: emptyList()
-                var functionCalls = parts.mapNotNull { it.functionCall }
+                var functionCalls = parts.mapNotNull { it.functionCall ?: it.functionCallLegacy }
 
                 while (functionCalls.isNotEmpty()) {
                     _chatHistory.add(candidate!!.content!!) // Add model's tool call to history
@@ -151,14 +242,15 @@ class AiSearchViewModel @Inject constructor(
                         responseParts.add(
                             Part(
                                 functionResponse = FunctionResponse(
-                                    call.name,
-                                    result
+                                    name = call.name,
+                                    response = result,
+                                    id = call.id
                                 )
                             )
                         )
                     }
 
-                    val responseContent = Content(role = "function", parts = responseParts)
+                    val responseContent = Content(role = "user", parts = responseParts)
                     _chatHistory.add(responseContent)
 
                     response = geminiRouter.routeSearchWithContent(_chatHistory)
@@ -172,6 +264,13 @@ class AiSearchViewModel @Inject constructor(
                     _recommendationMessage.value = finalMessage
                     appPrefs.emitNotification(finalMessage.take(100))
                     _chatHistory.add(candidate!!.content!!) // Add final response to history
+                } else if (functionCalls.isEmpty()) {
+                    Log.w(
+                        "AiSearchViewModel",
+                        "Gemini returned STOP with no content and no tool calls."
+                    )
+                    _aiSearchError.value =
+                        "AI returned an empty response. This usually means the model name is incorrect or the prompt was blocked."
                 }
             } catch (e: Exception) {
                 Log.e("AiSearchViewModel", "AI Search failed: ${e.message}", e)
@@ -213,21 +312,38 @@ class AiSearchViewModel @Inject constructor(
                 )
 
                 // Fetch actual data to return to Gemini
-                val allProducts = if (category != null && category != "all") {
-                    repository.getProductsByCategory(category).first()
+                val allProductsResource = if (category != null && category != "all") {
+                    repository.getProductsByCategory(category).filter { it !is Resource.Loading }
+                        .first()
                 } else {
-                    repository.getProducts().first()
+                    repository.getProducts().filter { it !is Resource.Loading }.first()
                 }
 
-                val filtered = if (allProducts is Resource.Success) {
-                    var results = applySearchFilters(allProducts.data, fields)
+                Log.d(
+                    "AiSearchViewModel",
+                    "Tool 'search_products' called. Category: $category, Keywords: $keywords"
+                )
+
+                val filtered = if (allProductsResource is Resource.Success) {
+                    Log.d(
+                        "AiSearchViewModel",
+                        "Total products in category: ${allProductsResource.data.size}"
+                    )
+                    var results = applySearchFilters(allProductsResource.data, fields)
+                    Log.d("AiSearchViewModel", "Filtered results count: ${results.size}")
                     results = when (sortBy) {
                         "price_asc" -> results.sortedBy { it.price }
                         "price_desc" -> results.sortedByDescending { it.price }
                         else -> results
                     }
                     results.take(5)
-                } else emptyList()
+                } else {
+                    Log.w(
+                        "AiSearchViewModel",
+                        "Could not fetch products for tool call: $allProductsResource"
+                    )
+                    emptyList()
+                }
 
                 // We update the intent to trigger the existing filtering logic in aiProductsState
                 _aiSearchIntent.value = searchIntent
@@ -301,16 +417,35 @@ class AiSearchViewModel @Inject constructor(
         _searchHistory.value = emptyList()
     }
 
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        val byteArray = outputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    }
+
     private fun applySearchFilters(
         products: List<ProductDto>,
         fields: SearchFields?
     ): List<ProductDto> {
         if (fields == null) return products
 
-        fun matchesKeywords(product: ProductDto, keywords: String?): Boolean {
-            if (keywords == null) return true
-            val searchWords = keywords.lowercase().split(" ").filter { it.length > 2 }
-            if (searchWords.isEmpty()) return product.title.contains(keywords, ignoreCase = true)
+        val keywords = fields.keywords?.lowercase()?.trim()
+        val isGenericSearch = keywords in listOf(
+            "latest",
+            "best",
+            "deals",
+            "top",
+            "trending"
+        ) || keywords.isNullOrBlank()
+
+        fun matchesKeywords(product: ProductDto, queryKeywords: String?): Boolean {
+            if (queryKeywords == null || isGenericSearch) return true
+            val searchWords = queryKeywords.lowercase().split(" ").filter { it.length > 2 }
+            if (searchWords.isEmpty()) return product.title.contains(
+                queryKeywords,
+                ignoreCase = true
+            )
             return searchWords.any { word ->
                 product.title.contains(word, ignoreCase = true) ||
                         product.description.contains(word, ignoreCase = true)
@@ -341,10 +476,19 @@ class AiSearchViewModel @Inject constructor(
 
         if (strictResults.isNotEmpty()) return strictResults
 
-        // 2. Fallback logic: Relax constraints
-        return products.filter { product ->
-            matchesKeywords(product, fields.keywords) &&
-                    (fields.price_max == null || product.price <= fields.price_max * 1.2)
+        // 2. Fallback logic: Relax keywords
+        val relaxedResults = products.filter { product ->
+            (isGenericSearch || matchesKeywords(product, fields.keywords)) &&
+                    (fields.price_max == null || product.price <= fields.price_max * 1.5)
+        }
+
+        if (relaxedResults.isNotEmpty()) return relaxedResults
+
+        // 3. Final Fallback: If no keywords match, but we have a category, just show the products in that category
+        return if (!fields.category.isNullOrBlank() && fields.category != "all") {
+            products.take(10)
+        } else {
+            emptyList()
         }
     }
 }
