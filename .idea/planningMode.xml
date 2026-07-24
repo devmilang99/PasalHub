@@ -3,10 +3,28 @@
   <component name="PlanningModeManager">
     <option name="approvalStates">
       <map>
+        <entry key="0192ae3d-83f2-498d-a7fd-d5c4e9494787" value="false" />
         <entry key="20260628-165703-198fad8d-7ad7-488c-8a0a-0896d3b5ea26" value="true" />
         <entry key="20260629-172637-5abfea6a-3436-473d-85aa-270b4086f985" value="true" />
         <entry key="20260630-135747-2d9cd433-f0dc-40e0-aa96-201ac3cf83a3" value="true" />
         <entry key="20260702-113036-350a0246-9919-46c0-9a7b-ad43117855f4" value="true" />
+        <entry key="20260705-165819-2dac247a-15df-4774-bddc-8c6ddadbf1d3" value="true" />
+        <entry key="20260707-132439-f18618ed-4707-49a9-a2c5-9eee21f72232" value="true" />
+        <entry key="20260707-142231-80a75233-e3b8-43ba-b4d1-84664d6948e5" value="true" />
+        <entry key="20260707-170226-ceb2a8e3-cc44-42c6-9b6f-7ff8de01da15" value="true" />
+        <entry key="20260708-175523-7404f3e1-d555-42fe-a0f5-1efba0b6f0f7" value="true" />
+        <entry key="20260710-121002-7fc0b738-e902-4cea-a650-44ab3a8ce0f9" value="true" />
+        <entry key="20260710-130516-8a194b54-0586-4a22-b2d6-ae689191571c" value="true" />
+        <entry key="20260710-193128-4f2f678d-57dd-4f41-9243-a5dd623e1dd5" value="true" />
+        <entry key="20260710-214044-ba49e5eb-a31d-4c6a-a0d5-ec1901b4e28c" value="true" />
+        <entry key="20260712-110742-adb603ff-96ca-4466-becb-73384fc5c040" value="true" />
+        <entry key="20260712-113658-56ff9d99-f1ab-46cf-a93b-280246438ab1" value="true" />
+        <entry key="20260712-113949-d7fe8dc6-f3c9-4cab-8a62-cc921295704f" value="true" />
+        <entry key="20260712-142306-9203b0db-b8cf-43f3-a60d-c14eb495402d" value="true" />
+        <entry key="20260712-165819-f220d09e-c07c-461d-a209-0f0255e98af1" value="true" />
+        <entry key="5dc4ea7b-f3f1-4ff6-b6b6-7912a52c8b17" value="false" />
+        <entry key="925e231a-7456-4c19-a7b6-9a9661759e5f" value="false" />
+        <entry key="9920c501-f8cb-4b68-b4a8-c24e1de5c2fa" value="false" />
       </map>
     </option>
   </component>

@@ -1,0 +1,24 @@
+# Production Readiness Tasks
+
+- `[x]` Cleanup Unused Files
+    - `[x]` Delete `SampleData.kt`
+    - `[x]` Delete `ExampleRobolectricTest.kt`
+    - `[x]` Delete `GreetingScreenshotTest.kt`
+    - `[x]` Delete `FakeStoreApi.kt`
+- `[x]` Dependency Optimization
+    - `[x]` Remove Retrofit and Moshi from `build.gradle.kts`
+    - `[x]` Update `applicationId` in `build.gradle.kts`
+    - `[x]` Cleanup `NetworkModule.kt`
+- `[x]` Code Refactoring (Consolidate Serialization)
+    - `[x]` Migrate `SearchRoutingModels.kt` to Kotlinx Serialization
+    - `[x]` Migrate `ProductDto.kt` to Kotlinx Serialization
+    - `[x]` Update `ProductRepository.kt` and `AppModule.kt`
+- `[x]` Global Package Refactoring
+    - `[x]` Rename `com.example` to `com.psl.pasalhub` in all files
+    - `[x]` Update directory structure
+    - `[x]` Update `AndroidManifest.xml`
+- `[x]` Production Polish
+    - `[x]` Cleanup / Manage Logs
+- `[x]` Verification
+    - `[x]` Build project
+    - `[x]` Run tests

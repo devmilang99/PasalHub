@@ -1,0 +1,8 @@
+- `[x]` Update `ProductEntity` to include `embedding` field
+- `[x]` Create `Converters` for Room to handle `FloatArray`
+- `[x]` Update `AppDatabase` to register `Converters`
+- `[x]` Update `ProductDao` with embedding-related queries
+- `[x]` Implement `VisualEmbeddingWorker` for background processing
+- `[x]` Trigger `VisualEmbeddingWorker` from `SupabaseSyncWorker`
+- `[x]` Refactor `VectorSearchRepository` to use real embeddings from DB
+- `[x]` Verify implementation with manual test/log check

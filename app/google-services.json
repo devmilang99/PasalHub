@@ -7,20 +7,12 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1079515205022:android:261412179169c4dbcd1a8f",
+        "mobilesdk_app_id": "1:1079515205022:android:8718f428ff44d101cd1a8f",
         "android_client_info": {
-          "package_name": "com.aistudio.ecommerceshop.pqwzxl"
+          "package_name": "com.psl.pasalhub"
         }
       },
       "oauth_client": [
-        {
-          "client_id": "1079515205022-ic5rltj5ena0v4fcvucldn5h7l87esdp.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.aistudio.ecommerceshop.pqwzxl",
-            "certificate_hash": "ae06d9146f9cb4cf5fd2b30cd15a5feaa9f56356"
-          }
-        },
         {
           "client_id": "1079515205022-ig535etmdi6l9sc98hrj1ojb610sgc7p.apps.googleusercontent.com",
           "client_type": 3

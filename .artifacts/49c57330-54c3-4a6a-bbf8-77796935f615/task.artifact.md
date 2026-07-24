@@ -1,0 +1,4 @@
+- [x] Remove background images and apply theme colors to Splash Screen
+- [x] Remove background images and apply theme colors to Login Screen
+- [x] Remove background images and apply theme colors to Onboarding Screen
+- [x] Clean up unused resource references in these screens

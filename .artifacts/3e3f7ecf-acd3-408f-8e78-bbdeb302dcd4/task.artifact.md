@@ -1,0 +1,2 @@
+- `[x]` Fix `VisualSearchEngine.kt` compilation error (Already fixed in the codebase)
+- `[x]` Verify the fix with a build

@@ -1,0 +1,7 @@
+- `[x]` Purge Firebase and Consolidate on Supabase
+    - `[x]` Update `libs.versions.toml` to remove Firebase and add Google AI SDK
+    - `[x]` Update `app/build.gradle.kts` to remove Google Services plugin and Firebase dependencies
+    - `[x]` Migrate `GeminiSearchRouter.kt` to standalone Google AI SDK
+    - `[x]` Update `AiSearchViewModel.kt` imports
+    - `[x]` Delete `app/google-services.json`
+    - `[x]` Verify build and sync

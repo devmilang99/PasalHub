@@ -1,0 +1,5 @@
+- [x] Research the LiteRT namespace collision error
+- [x] Create implementation plan
+- [x] Exclude `litert-api` from `app/build.gradle.kts`
+- [x] Verify build succeeds
+- [x] Create walkthrough

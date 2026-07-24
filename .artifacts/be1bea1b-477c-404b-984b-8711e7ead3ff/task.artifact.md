@@ -1,0 +1,9 @@
+- [x] Create `PasalHubBackground` reusable component
+- [x] Apply `PasalHubBackground` to `PermissionScreen.kt`
+- [x] Apply `PasalHubBackground` to `ThemeSelectionScreen.kt`
+- [x] Apply `PasalHubBackground` to `LoginScreen.kt`
+- [x] Apply `PasalHubBackground` to `ForgotPasswordScreen.kt`
+- [x] Apply `PasalHubBackground` to `OnboardingScreen.kt`
+- [x] Apply `PasalHubBackground` to `SplashScreen.kt`
+- [x] Refactor `RegisterScreen.kt` to use `PasalHubBackground`
+- [x] Verify changes on device/emulator

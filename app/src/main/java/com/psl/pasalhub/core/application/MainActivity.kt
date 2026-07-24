@@ -1,0 +1,511 @@
+package com.psl.pasalhub.core.application
+
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.psl.pasalhub.ai.presentation.AISearchScreen
+import com.psl.pasalhub.ai.presentation.AiSearchViewModel
+import com.psl.pasalhub.auth.forgotpassword.viewmodel.ForgotPasswordViewModel
+import com.psl.pasalhub.auth.login.viewmodel.LoginViewModel
+import com.psl.pasalhub.auth.register.viewmodel.RegisterViewModel
+import com.psl.pasalhub.core.application.domain.AppError
+import com.psl.pasalhub.core.application.presentation.AppViewModel
+import com.psl.pasalhub.core.networking.remote.ProductDto
+import com.psl.pasalhub.core.viewmodel.MainViewModel
+import com.psl.pasalhub.dashboard.cart.ui.OrderReviewScreen
+import com.psl.pasalhub.dashboard.cart.viewmodel.CartViewModel
+import com.psl.pasalhub.dashboard.home.viewmodel.HomeViewModel
+import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
+import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.products.ui.ProductDetailScreen
+import com.psl.pasalhub.dashboard.products.viewmodel.ProductDetailViewModel
+import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
+import com.psl.pasalhub.dashboard.ui.DashboardScreen
+import com.psl.pasalhub.initial.presentation.InitialViewModel
+import com.psl.pasalhub.initial.presentation.onboarding.OnboardingScreen
+import com.psl.pasalhub.initial.presentation.permission.PermissionScreen
+import com.psl.pasalhub.initial.presentation.splash.SplashScreen
+import com.psl.pasalhub.initial.presentation.theme.ThemeSelectionScreen
+import com.psl.pasalhub.ui.theme.PasalHubTheme
+import com.psl.pasalhub.ui.theme.ProvideDimens
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        // These ViewModels are shared or used for app-level state
+        val mainViewModel: MainViewModel by viewModels()
+        val appViewModel: AppViewModel by viewModels()
+        val initialViewModel: InitialViewModel by viewModels()
+
+        setContent {
+            val isDarkTheme by appViewModel.isDarkTheme.collectAsStateWithLifecycle()
+            val globalError by appViewModel.globalError.collectAsStateWithLifecycle()
+            val windowSizeClass = calculateWindowSizeClass(this)
+
+            PasalHubTheme(darkTheme = isDarkTheme) {
+                ProvideDimens(windowSizeClass = windowSizeClass) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box {
+                            PasalHubNavHost(
+                                mainViewModel = mainViewModel,
+                                appViewModel = appViewModel,
+                                initialViewModel = initialViewModel
+                            )
+
+                            globalError?.let { error ->
+                                GlobalErrorOverlay(
+                                    error = error,
+                                    onRetry = {
+                                        appViewModel.setError(null)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalErrorOverlay(
+    error: AppError,
+    onRetry: () -> Unit
+) {
+    val (icon, title, message) = when (error) {
+        is AppError.Network -> Triple(
+            Icons.Default.WifiOff,
+            "No Connection",
+            error.message
+        )
+
+        is AppError.Database -> Triple(
+            Icons.Default.Storage,
+            "System Error",
+            error.message
+        )
+
+        is AppError.Generic -> Triple(
+            Icons.Default.Error,
+            error.title,
+            error.message
+        )
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Dismiss Error")
+            }
+        }
+    }
+}
+
+@Composable
+fun PasalHubNavHost(
+    mainViewModel: MainViewModel,
+    appViewModel: AppViewModel,
+    initialViewModel: InitialViewModel
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val navController = rememberNavController()
+
+    LaunchedEffect(Unit) {
+        mainViewModel.loadSettings(context)
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = "splash"
+    ) {
+        composable("splash") {
+            SplashScreen(
+                viewModel = initialViewModel,
+                onNavigateNext = {
+                    val arePermissionsGranted =
+                        initialViewModel.locationPermissionGranted.value &&
+                                initialViewModel.cameraPermissionGranted.value &&
+                                initialViewModel.storagePermissionGranted.value &&
+                                initialViewModel.notificationPermissionGranted.value
+
+                    val isFlowCompleted = initialViewModel.isFlowCompleted.value
+                    val isOnboardingDone = initialViewModel.onboardingCompleted.value
+                    val isThemeSet = initialViewModel.isThemeSet.value
+                    val currentUser = initialViewModel.currentUser.value
+
+                    // Debug log to trace navigation decisions
+                    android.util.Log.d(
+                        "PasalHubNav",
+                        "Splash -> OnboardingDone: $isOnboardingDone, FlowCompleted: $isFlowCompleted, User: ${currentUser?.email}"
+                    )
+
+                    if (currentUser?.isRemembered == true) {
+                        if (currentUser.isGoogleUser && !currentUser.isProfileComplete) {
+                            navController.navigate("google_onboarding") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate("dashboard?startTab=0") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        }
+                    } else if (isFlowCompleted) {
+                        navController.navigate("login") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    } else if (!isOnboardingDone) {
+                        navController.navigate("onboarding") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    } else if (!arePermissionsGranted) {
+                        navController.navigate("permission") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    } else if (!isThemeSet) {
+                        navController.navigate("theme_selection") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    } else {
+                        // Fallback to login if we can't decide but onboarding is done
+                        navController.navigate("login") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable("permission") {
+            PermissionScreen(
+                viewModel = initialViewModel,
+                onNavigateNext = {
+                    navController.navigate("theme_selection") {
+                        popUpTo("permission") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("theme_selection") {
+            ThemeSelectionScreen(
+                viewModel = initialViewModel,
+                onNavigateNext = {
+                    navController.navigate("login") {
+                        popUpTo("theme_selection") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("onboarding") {
+            OnboardingScreen(
+                viewModel = initialViewModel,
+                onNavigateNext = {
+                    navController.navigate("permission") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("login") {
+            val loginViewModel: LoginViewModel = hiltViewModel()
+            val scope = rememberCoroutineScope()
+
+            com.psl.pasalhub.auth.login.ui.LoginScreen(
+                viewModel = loginViewModel,
+                onNavigateToRegister = {
+                    navController.navigate("register")
+                },
+                onNavigateToDashboard = {
+                    scope.launch {
+                        // Wait for the user profile to be synchronized from the DB
+                        val user = loginViewModel.currentUser.filterNotNull().first()
+                        if (user.isGoogleUser && !user.isProfileComplete) {
+                            navController.navigate("google_onboarding") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate("dashboard?startTab=0") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                    }
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate("forgot_password")
+                }
+            )
+        }
+
+        composable("google_onboarding") {
+            val loginViewModel: LoginViewModel = hiltViewModel()
+            com.psl.pasalhub.auth.login.ui.GoogleOnboardingScreen(
+                viewModel = loginViewModel,
+                onNavigateToDashboard = {
+                    navController.navigate("dashboard?startTab=0") {
+                        popUpTo("google_onboarding") { inclusive = true }
+                    }
+                },
+                onExit = {
+                    navController.navigate("login") {
+                        popUpTo("google_onboarding") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("forgot_password") {
+            val forgotPasswordViewModel: ForgotPasswordViewModel = hiltViewModel()
+            com.psl.pasalhub.auth.forgotpassword.ui.ForgotPasswordScreen(
+                viewModel = forgotPasswordViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("register") {
+            val registerViewModel: RegisterViewModel = hiltViewModel()
+            com.psl.pasalhub.auth.register.ui.RegisterScreen(
+                viewModel = registerViewModel,
+                onNavigateBackToLogin = {
+                    navController.popBackStack()
+                },
+                onNavigateToDashboard = {
+                    navController.navigate("dashboard?startTab=0") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("ai_search") {
+            val aiSearchViewModel: AiSearchViewModel = hiltViewModel()
+            AISearchScreen(
+                viewModel = mainViewModel,
+                aiViewModel = aiSearchViewModel,
+                onBackClick = {
+                    navController.navigate("dashboard?startTab=0") {
+                        popUpTo("ai_search") { inclusive = true }
+                    }
+                },
+                onProductClick = { product ->
+                    navController.navigate("product_detail/${product.id}")
+                }
+            )
+        }
+
+        composable("dashboard?startTab={startTab}") { backStackEntry ->
+            val startTab = backStackEntry.arguments?.getString("startTab")?.toIntOrNull() ?: 0
+            val aiSearchViewModel: AiSearchViewModel = hiltViewModel()
+            val homeViewModel: HomeViewModel = hiltViewModel()
+            val orderViewModel: OrderViewModel = hiltViewModel()
+            val cartViewModel: CartViewModel = hiltViewModel()
+            val profileViewModel: ProfileViewModel = hiltViewModel()
+            DashboardScreen(
+                viewModel = mainViewModel,
+                appViewModel = appViewModel,
+                aiViewModel = aiSearchViewModel,
+                homeViewModel = homeViewModel,
+                orderViewModel = orderViewModel,
+                cartViewModel = cartViewModel,
+                profileViewModel = profileViewModel,
+                onLogout = {
+                    mainViewModel.logout(context)
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onAiSearchClick = {
+                    navController.navigate("ai_search")
+                },
+                onFilterClick = {
+                    // Filter removed
+                },
+                onProductClick = { product ->
+                    navController.navigate("product_detail/${product.id}")
+                },
+                onOrderReview = { items, subtotal, tax, discount, total, voucher, method, address ->
+                    val ids = items.map { it.productId }.joinToString(",")
+                    navController.navigate("order_review?subtotal=$subtotal&tax=$tax&discount=$discount&total=$total&voucher=$voucher&paymentMethod=$method&address=$address&selectedIds=$ids")
+                },
+                initialTab = startTab
+            )
+        }
+
+        composable("order_review?subtotal={subtotal}&tax={tax}&discount={discount}&total={total}&voucher={voucher}&paymentMethod={paymentMethod}&address={address}&selectedIds={selectedIds}") { backStackEntry ->
+            val cartViewModel: CartViewModel = hiltViewModel()
+            val cartItems by cartViewModel.cartItems.collectAsStateWithLifecycle()
+            val isDark by appViewModel.isDarkTheme.collectAsStateWithLifecycle()
+            val context = androidx.compose.ui.platform.LocalContext.current
+
+            val subtotal = backStackEntry.arguments?.getString("subtotal")?.toDoubleOrNull() ?: 0.0
+            val tax = backStackEntry.arguments?.getString("tax")?.toDoubleOrNull() ?: 0.0
+            val discount = backStackEntry.arguments?.getString("discount")?.toDoubleOrNull() ?: 0.0
+            val total = backStackEntry.arguments?.getString("total")?.toDoubleOrNull() ?: 0.0
+            val voucher = backStackEntry.arguments?.getString("voucher") ?: "None"
+            val paymentMethod = backStackEntry.arguments?.getString("paymentMethod") ?: ""
+            val address = backStackEntry.arguments?.getString("address") ?: ""
+            val selectedIdsStr = backStackEntry.arguments?.getString("selectedIds") ?: ""
+            val selectedIds = remember(selectedIdsStr) {
+                selectedIdsStr.split(",").filter { it.isNotEmpty() }.mapNotNull { it.toIntOrNull() }
+                    .toSet()
+            }
+
+            OrderReviewScreen(
+                items = cartItems.filter { it.productId in selectedIds },
+                subtotal = subtotal,
+                tax = tax,
+                discount = discount,
+                total = total,
+                voucher = voucher,
+                paymentMethod = paymentMethod,
+                address = address,
+                isDark = isDark,
+                onBack = { navController.popBackStack() },
+                onConfirmOrder = {
+                    val selectedItems = cartItems.filter { it.productId in selectedIds }
+                    cartViewModel.checkoutSelected(
+                        context = context,
+                        selectedItems = selectedItems,
+                        finalTotal = total,
+                        paymentMethod = paymentMethod,
+                        appliedVoucher = voucher
+                    )
+                    appViewModel.postNotification("Your order has been placed successfully!")
+                    navController.navigate("dashboard?startTab=2") {
+                        popUpTo("dashboard?startTab=0") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("product_detail/{productId}") { backStackEntry ->
+            val productIdInt =
+                backStackEntry.arguments?.getString("productId")?.toIntOrNull() ?: return@composable
+            val productsState by mainViewModel.homeProductsState.collectAsStateWithLifecycle()
+
+            val productDetailState: MutableState<ProductDto?> = remember { mutableStateOf(null) }
+
+            LaunchedEffect(productIdInt, productsState) {
+                val state = productsState
+                val found = if (state is Resource.Success<List<ProductDto>>) {
+                    state.data.find { it.id == productIdInt }
+                } else null
+                productDetailState.value = found ?: mainViewModel.getProductById(productIdInt)
+            }
+
+            val currentProduct = productDetailState.value
+            if (currentProduct == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                val productDetailViewModel: ProductDetailViewModel = hiltViewModel()
+                ProductDetailScreen(
+                    product = currentProduct,
+                    viewModel = mainViewModel,
+                    detailViewModel = productDetailViewModel,
+                    onBack = { navController.popBackStack() },
+                    onProductClick = { newProduct ->
+                        navController.navigate("product_detail/${newProduct.id}")
+                    },
+                    onOrderPlaced = {
+                        navController.navigate("dashboard?startTab=2") {
+                            popUpTo("dashboard?startTab=0") { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
+    }
+}

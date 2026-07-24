@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Pasal Hub</string>
+    <string name="step_2">Step 2</string>
+    <string name="step_3">Step 3</string>
 </resources>

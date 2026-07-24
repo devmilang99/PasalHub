@@ -1,0 +1,6 @@
+- [x] Update imports in `GeminiSearchRouter.kt`
+- [x] Refactor `searchProductsTool` to use `defineFunction` and correct `Schema` calls
+- [x] Refactor `getProductDetailsTool` to use `defineFunction` and correct `Schema` calls
+- [x] Refactor `applyDiscountTool` to use `defineFunction` and correct `Schema` calls
+- [x] Fix cascading errors in `AiSearchViewModel.kt` due to SDK changes
+- [x] Verify build with `./gradlew :app:compileDebugKotlin`
