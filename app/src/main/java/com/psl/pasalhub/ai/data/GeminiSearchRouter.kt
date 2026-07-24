@@ -13,27 +13,21 @@ class GeminiSearchRouter @Inject constructor(
 
     private val searchProductsTool = FunctionDeclaration(
         name = "search_products",
-        description = "Search for products in the Pasal Hub catalog based on various filters. Use this when the user is looking for something to buy.",
+        description = "Search PasalHub catalog. Use when user wants to buy or explore products.",
         parameters = Schema(
             type = "object",
             properties = mapOf(
-                "keywords" to Schema(
-                    type = "string",
-                    description = "Core product keywords or nouns (e.g., 'laptop', 'shoes')."
-                ),
+                "keywords" to Schema(type = "string", description = "Product nouns (e.g. laptop)."),
                 "category" to Schema(
                     type = "string",
-                    description = "Product category. Allowed: electronics, clothing, footwear, home_appliances, accessories, sports_fitness, fashion, jewelery, home."
+                    description = "Allowed: electronics, clothing, footwear, home_appliances, accessories, sports_fitness, fashion, jewelery, home."
                 ),
-                "brand" to Schema(
-                    type = "string",
-                    description = "Specific brand name if mentioned."
-                ),
-                "color" to Schema(type = "string", description = "Preferred color."),
-                "price_max" to Schema(type = "number", description = "Maximum price limit."),
+                "brand" to Schema(type = "string", description = "Brand name."),
+                "color" to Schema(type = "string", description = "Color."),
+                "price_max" to Schema(type = "number", description = "Max price."),
                 "sort_by" to Schema(
                     type = "string",
-                    description = "Sorting preference. Allowed: price_asc, price_desc, rating_desc, relevance."
+                    description = "Allowed: price_asc, price_desc, rating_desc, relevance."
                 )
             )
         )
@@ -41,14 +35,11 @@ class GeminiSearchRouter @Inject constructor(
 
     private val getProductDetailsTool = FunctionDeclaration(
         name = "get_product_details",
-        description = "Get detailed information about a specific product by its ID. Use this when the user asks specifically about one product.",
+        description = "Get detailed info for a specific product ID.",
         parameters = Schema(
             type = "object",
             properties = mapOf(
-                "product_id" to Schema(
-                    type = "integer",
-                    description = "The unique ID of the product."
-                )
+                "product_id" to Schema(type = "integer", description = "Unique product ID.")
             ),
             required = listOf("product_id")
         )
@@ -56,18 +47,12 @@ class GeminiSearchRouter @Inject constructor(
 
     private val applyDiscountTool = FunctionDeclaration(
         name = "apply_discount",
-        description = "Check for available discounts or apply a coupon code.",
+        description = "Check/apply coupon codes.",
         parameters = Schema(
             type = "object",
             properties = mapOf(
-                "coupon_code" to Schema(
-                    type = "string",
-                    description = "The discount coupon code (optional)."
-                ),
-                "product_id" to Schema(
-                    type = "integer",
-                    description = "Specific product ID to check discount for (optional)."
-                )
+                "coupon_code" to Schema(type = "string", description = "Coupon code."),
+                "product_id" to Schema(type = "integer", description = "Product ID (optional).")
             )
         )
     )
@@ -91,23 +76,15 @@ class GeminiSearchRouter @Inject constructor(
         parts = listOf(
             Part(
                 text = """
-                You are the AI Assistant for PasalHub, a premium e-commerce app. 
-                Your primary goal is to help users find products and provide short, sweet shopping advice.
-                
-                CRITICAL RULES:
-                1. Always use 'search_products' tool when a user mentions a category, wants to explore products, or uses phrases like "Latest", "Best", "Deals", "Show me".
-                2. Do not answer that you cannot find products without first calling the 'search_products' tool.
-                3. If the user clicks a "Quick Explore" action (like 'Latest electronics', 'Summer fashion', etc.), you MUST call 'search_products' with the appropriate category.
-                4. For 'Latest tech' or 'Latest electronics', use category='electronics'. Avoid using restrictive keywords unless the user was specific.
-                5. For 'Summer fashion', use category='clothing' or 'fashion'.
-                6. For 'Gaming gear', use category='electronics' or 'sports_fitness' with 'gaming' keywords.
-                7. For 'Home decor', use category='home'.
-                8. ALWAYS provide a natural language response after tool calls.
-                9. Keep responses EXTREMELY concise (max 2 short sentences).
-                10. DO NOT list product names, prices, or descriptions in your text response, as they are already shown in the result cards.
-                11. If 'search_products' returns results, just say something like "Here are some top picks for you!" or "I found these matches in our catalog."
-                12. If 'search_products' returns 0 results, suggest broader categories or check for deals.
-                13. Tone: Helpful, premium, and very BRIEF.
+                Role: PasalHub AI Assistant.
+                Goal: Help find products with brief, premium advice.
+                Rules:
+                - Use 'search_products' for any product exploration, category mentions, or "Latest/Best/Deals" queries.
+                - Call tools before claiming no results.
+                - Map "tech/electronics" -> 'electronics', "fashion" -> 'clothing', "decor" -> 'home'.
+                - Post-tool: Give a concise natural language response (max 2 sentences). 
+                - Do NOT list products/prices (already in UI cards).
+                - Tone: Brief & Helpful.
                 """.trimIndent()
             )
         )

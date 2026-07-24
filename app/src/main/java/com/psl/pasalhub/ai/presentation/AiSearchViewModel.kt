@@ -11,6 +11,7 @@ import com.psl.pasalhub.ai.data.FunctionResponse
 import com.psl.pasalhub.ai.data.GeminiSearchRouter
 import com.psl.pasalhub.ai.data.InlineData
 import com.psl.pasalhub.ai.data.Part
+import com.psl.pasalhub.ai.domain.model.AiChatMessage
 import com.psl.pasalhub.ai.domain.model.SearchFields
 import com.psl.pasalhub.ai.domain.model.SearchIntent
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
@@ -54,6 +55,12 @@ class AiSearchViewModel @Inject constructor(
     private val _refreshTrigger = MutableStateFlow(0L)
     private val _manualProductList = MutableStateFlow<List<ProductDto>?>(null)
     private val _chatHistory = mutableListOf<Content>()
+    private val _messages = MutableStateFlow<List<AiChatMessage>>(emptyList())
+    val messages: StateFlow<List<AiChatMessage>> = _messages.asStateFlow()
+
+    companion object {
+        private const val MAX_CHAT_HISTORY = 10
+    }
 
     // AI Search State
     private val _isAiProcessing = MutableStateFlow(false)
@@ -140,10 +147,11 @@ class AiSearchViewModel @Inject constructor(
     fun performAiSearch(query: String) {
         if (query.isBlank()) return
 
-        _manualProductList.value = null
-        _aiSearchIntent.value = null
-        _recommendationMessage.value = null
+        _isAiProcessing.value = true
         _aiSearchError.value = null
+
+        // Add to UI messages
+        _messages.value = _messages.value + AiChatMessage(text = query, isUser = true)
 
         // Add to history
         val currentHistory = _searchHistory.value.toMutableList()
@@ -155,10 +163,13 @@ class AiSearchViewModel @Inject constructor(
     }
 
     fun performVisualSearch(bitmap: Bitmap) {
+        _isAiProcessing.value = true
         _manualProductList.value = null
 
+        // Add to UI messages
+        _messages.value = _messages.value + AiChatMessage(image = bitmap, isUser = true)
+
         viewModelScope.launch {
-            _isAiProcessing.value = true
             _aiSearchError.value = null
             _recommendationMessage.value = "Processing image..."
 
@@ -212,7 +223,7 @@ class AiSearchViewModel @Inject constructor(
             _aiSearchIntent.value = null
 
             try {
-                _chatHistory.add(userContent)
+                addToHistory(userContent)
                 var response = geminiRouter.routeSearchWithContent(_chatHistory)
 
                 // Function Calling Loop
@@ -222,19 +233,18 @@ class AiSearchViewModel @Inject constructor(
                     "AiSearchViewModel",
                     "Gemini response received. FinishReason: ${candidate?.finishReason}, Parts: ${partsReceived.size}"
                 )
-                partsReceived.forEachIndexed { index, part ->
-                    val hasCall = part.functionCall != null || part.functionCallLegacy != null
-                    Log.d(
-                        "AiSearchViewModel",
-                        "Part $index: text='${part.text}', hasCall=$hasCall, id=${part.functionCall?.id ?: part.functionCallLegacy?.id}"
-                    )
-                }
 
                 var parts = candidate?.content?.parts ?: emptyList()
                 var functionCalls = parts.mapNotNull { it.functionCall ?: it.functionCallLegacy }
 
                 while (functionCalls.isNotEmpty()) {
-                    _chatHistory.add(candidate!!.content!!) // Add model's tool call to history
+                    val intermediateText = parts.firstOrNull { it.text != null }?.text
+                    if (!intermediateText.isNullOrBlank()) {
+                        _messages.value =
+                            _messages.value + AiChatMessage(text = intermediateText, isUser = false)
+                    }
+
+                    addToHistory(candidate!!.content!!) // Add model's tool call to history
 
                     val responseParts = mutableListOf<Part>()
                     for (call in functionCalls) {
@@ -251,7 +261,7 @@ class AiSearchViewModel @Inject constructor(
                     }
 
                     val responseContent = Content(role = "user", parts = responseParts)
-                    _chatHistory.add(responseContent)
+                    addToHistory(responseContent)
 
                     response = geminiRouter.routeSearchWithContent(_chatHistory)
                     candidate = response.candidates?.firstOrNull()
@@ -261,9 +271,13 @@ class AiSearchViewModel @Inject constructor(
 
                 val finalMessage = parts.firstOrNull { it.text != null }?.text
                 if (!finalMessage.isNullOrBlank()) {
+                    // Add to UI messages
+                    _messages.value =
+                        _messages.value + AiChatMessage(text = finalMessage, isUser = false)
+                    
                     _recommendationMessage.value = finalMessage
                     appPrefs.emitNotification(finalMessage.take(100))
-                    _chatHistory.add(candidate!!.content!!) // Add final response to history
+                    addToHistory(candidate!!.content!!) // Add final response to history
                 } else if (functionCalls.isEmpty()) {
                     Log.w(
                         "AiSearchViewModel",
@@ -274,11 +288,28 @@ class AiSearchViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("AiSearchViewModel", "AI Search failed: ${e.message}", e)
-                _aiSearchError.value = "AI Assistant is currently unavailable."
+                val errorMessage = e.message ?: ""
+                if (errorMessage.contains("429") || errorMessage.contains(
+                        "quota",
+                        ignoreCase = true
+                    )
+                ) {
+                    _aiSearchError.value =
+                        "You've reached the AI usage limit for today. Please come back tomorrow or try again in a few hours."
+                } else {
+                    _aiSearchError.value = "AI Assistant is currently unavailable."
+                }
                 appPrefs.emitNotification("Error: ${e.message}")
             } finally {
                 _isAiProcessing.value = false
             }
+        }
+    }
+
+    private fun addToHistory(content: Content) {
+        _chatHistory.add(content)
+        while (_chatHistory.size > MAX_CHAT_HISTORY) {
+            _chatHistory.removeAt(0)
         }
     }
 
@@ -411,6 +442,7 @@ class AiSearchViewModel @Inject constructor(
         _recommendationMessage.value = null
         _isAiProcessing.value = false
         _chatHistory.clear()
+        _messages.value = emptyList()
     }
 
     fun clearHistory() {

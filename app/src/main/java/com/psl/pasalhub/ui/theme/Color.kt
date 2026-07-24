@@ -22,3 +22,8 @@ val DarkTextPrimary = Color(0xFFF5F5F4)    // Stone 50
 val DarkTextSecondary = Color(0xFFA8A29E)  // Stone 400
 
 val AlertRed = Color(0xFFEF4444)
+val DarkGreen = Color(0xFF064E3B)
+
+// Motion & Premium Animation Colors
+val LightMotion = Color(0xFF8B5CF6)       // Modern Indigo/Violet
+val DarkMotion = Color(0xFF22D3EE)        // Cyber Cyan/Sky Blue

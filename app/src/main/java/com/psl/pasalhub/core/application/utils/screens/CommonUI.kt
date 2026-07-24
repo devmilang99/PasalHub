@@ -89,6 +89,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.psl.pasalhub.core.application.utils.NetworkUtils
 import com.psl.pasalhub.core.networking.remote.ProductDto
+import com.psl.pasalhub.ui.theme.PasalHubTheme
 import java.util.Locale
 import kotlin.math.round
 
@@ -995,9 +996,9 @@ fun Modifier.shimmerEffect(): Modifier = composed {
     background(
         brush = Brush.linearGradient(
             colors = listOf(
-                Color.LightGray.copy(alpha = 0.5f),
-                Color.LightGray.copy(alpha = 0.2f),
-                Color.LightGray.copy(alpha = 0.5f),
+                PasalHubTheme.colors.motionColor.copy(alpha = 0.12f),
+                PasalHubTheme.colors.motionColor.copy(alpha = 0.04f),
+                PasalHubTheme.colors.motionColor.copy(alpha = 0.12f),
             ),
             start = Offset(startOffsetX, 0f),
             end = Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())

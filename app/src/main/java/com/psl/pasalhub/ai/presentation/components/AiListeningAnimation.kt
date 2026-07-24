@@ -9,62 +9,91 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 
 @Composable
 fun AiListeningAnimation(
     modifier: Modifier = Modifier,
-    text: String = "AI is listening..."
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "listening")
+    val goldColor = Color(0xFFFFD700)
 
-    val baseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "opacity"
-    )
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top
     ) {
+        // AI Avatar (Simplified version of AiChatBubble)
         Box(
-            modifier = Modifier.height(80.dp),
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            goldColor
+                        )
+                    )
+                ),
             contentAlignment = Alignment.Center
         ) {
+            Icon(
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = "AI Avatar",
+                modifier = Modifier.size(20.dp),
+                tint = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Messenger-style Bubble with Pulsing Dots
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 16.dp,
+                bottomStart = 16.dp,
+                bottomEnd = 16.dp
+            )
+        ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 repeat(3) { index ->
-                    val delay = index * 300
+                    val delay = index * 200
                     val scale by infiniteTransition.animateFloat(
-                        initialValue = 0.6f,
-                        targetValue = 1.3f,
+                        initialValue = 0.8f,
+                        targetValue = 1.2f,
                         animationSpec = infiniteRepeatable(
                             animation = tween(
-                                durationMillis = 600,
+                                durationMillis = 400,
                                 delayMillis = delay,
                                 easing = FastOutSlowInEasing
                             ),
@@ -74,11 +103,11 @@ fun AiListeningAnimation(
                     )
 
                     val alpha by infiniteTransition.animateFloat(
-                        initialValue = 0.3f,
+                        initialValue = 0.4f,
                         targetValue = 1f,
                         animationSpec = infiniteRepeatable(
                             animation = tween(
-                                durationMillis = 600,
+                                durationMillis = 400,
                                 delayMillis = delay,
                                 easing = FastOutSlowInEasing
                             ),
@@ -89,25 +118,15 @@ fun AiListeningAnimation(
 
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(6.dp)
                             .scale(scale)
                             .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+                                color = goldColor.copy(alpha = alpha),
                                 shape = CircleShape
                             )
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = baseAlpha),
-            letterSpacing = 0.5.sp
-        )
     }
 }

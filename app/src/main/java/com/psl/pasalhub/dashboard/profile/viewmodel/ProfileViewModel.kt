@@ -73,6 +73,10 @@ class ProfileViewModel @Inject constructor(
     val isDarkTheme: StateFlow<Boolean> = repository.isDarkTheme()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    private val _passwordUpdateStatus =
+        MutableStateFlow<PasswordUpdateStatus>(PasswordUpdateStatus.Idle)
+    val passwordUpdateStatus: StateFlow<PasswordUpdateStatus> = _passwordUpdateStatus.asStateFlow()
+
     fun loadMemberPoints() {
         viewModelScope.launch {
             currentUser.value?.let { user ->
@@ -113,9 +117,20 @@ class ProfileViewModel @Inject constructor(
 
     fun updatePassword(email: String, newPass: String) {
         viewModelScope.launch {
-            repository.updatePassword(email, newPass)
-            _userPassword.value = newPass
+            _passwordUpdateStatus.value = PasswordUpdateStatus.Loading
+            try {
+                repository.updatePassword(email, newPass)
+                _userPassword.value = newPass
+                _passwordUpdateStatus.value = PasswordUpdateStatus.Success
+            } catch (e: Exception) {
+                _passwordUpdateStatus.value =
+                    PasswordUpdateStatus.Error(e.message ?: "Failed to update password")
+            }
         }
+    }
+
+    fun resetPasswordStatus() {
+        _passwordUpdateStatus.value = PasswordUpdateStatus.Idle
     }
 
     fun toggleFavorite(productId: Int) {
@@ -123,4 +138,11 @@ class ProfileViewModel @Inject constructor(
             repository.toggleFavorite(productId)
         }
     }
+}
+
+sealed class PasswordUpdateStatus {
+    object Idle : PasswordUpdateStatus()
+    object Loading : PasswordUpdateStatus()
+    object Success : PasswordUpdateStatus()
+    data class Error(val message: String) : PasswordUpdateStatus()
 }

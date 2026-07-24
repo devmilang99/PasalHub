@@ -438,12 +438,12 @@ fun ModernOrderCard(
 
                 val flowBrush = Brush.linearGradient(
                     colors = listOf(
-                        PasalHubTheme.colors.success,
-                        PasalHubTheme.colors.success.copy(alpha = 0.7f),
-                        PasalHubTheme.colors.success
+                        PasalHubTheme.colors.motionColor,
+                        PasalHubTheme.colors.motionColor.copy(alpha = 0.5f),
+                        PasalHubTheme.colors.motionColor
                     ),
                     start = Offset(flowOffset, 0f),
-                    end = Offset(flowOffset + 300f, 0f),
+                    end = Offset(flowOffset + 400f, 0f),
                     tileMode = TileMode.Repeated
                 )
 
@@ -468,7 +468,7 @@ fun ModernOrderCard(
                             Icon(
                                 imageVector = Icons.Default.Sensors,
                                 contentDescription = null,
-                                tint = PasalHubTheme.colors.info.copy(alpha = pulseAlpha),
+                                tint = PasalHubTheme.colors.motionColor.copy(alpha = pulseAlpha),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))

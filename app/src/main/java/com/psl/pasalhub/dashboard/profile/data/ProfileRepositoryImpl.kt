@@ -5,6 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
+import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.database.data.UserDao
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.core.networking.remote.ProductDto
@@ -24,7 +25,8 @@ class ProfileRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val pointDao: com.psl.pasalhub.core.database.data.PointDao,
     @ApplicationContext private val context: Context,
-    private val appPrefs: AppPreferencesRepository
+    private val appPrefs: AppPreferencesRepository,
+    private val authRepository: SupabaseAuthRepository
 ) : ProfileRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
@@ -85,6 +87,7 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updatePassword(email: String, newPass: String) {
+        authRepository.updatePassword(newPass)
         passPrefs.edit().putString("pwd_$email", newPass).apply()
     }
 

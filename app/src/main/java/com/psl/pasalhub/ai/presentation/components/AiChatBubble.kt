@@ -26,10 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+
 @Composable
 fun AiChatBubble(
     message: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
@@ -46,17 +47,17 @@ fun AiChatBubble(
                     Brush.linearGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.tertiary
+                            Color(0xFFFFD700) // Explicit Golden
                         )
                     )
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Rounded.AutoAwesome,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = "AI Avatar",
+                modifier = Modifier.size(20.dp),
+                tint = Color.White
             )
         }
 

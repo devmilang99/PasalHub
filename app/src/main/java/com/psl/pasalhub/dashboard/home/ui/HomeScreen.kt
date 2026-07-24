@@ -242,8 +242,8 @@ fun HomeScreen(
         ) {
             if (isAiProcessing) {
                 AiListeningAnimation(
-                    modifier = Modifier.padding(16.dp),
-                    text = "PasalHub AI is analyzing your request..."
+                    modifier = Modifier.padding(16.dp)
+
                 )
             }
 

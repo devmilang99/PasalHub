@@ -1,8 +1,16 @@
 package com.psl.pasalhub.ui.theme
 
 import android.app.Activity
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -32,6 +40,7 @@ data class PasalHubColors(
     val info: Color,
     val textPrimary: Color,
     val textSecondary: Color,
+    val motionColor: Color,
     val isLight: Boolean
 )
 
@@ -62,6 +71,7 @@ private val LightColors = PasalHubColors(
     info = Color(0xFF0288D1),
     textPrimary = LightTextPrimary,
     textSecondary = LightTextSecondary,
+    motionColor = LightMotion,
     isLight = true
 )
 
@@ -88,6 +98,7 @@ private val DarkColors = PasalHubColors(
     info = Color(0xFF38BDF8),
     textPrimary = DarkTextPrimary,
     textSecondary = DarkTextSecondary,
+    motionColor = DarkMotion,
     isLight = false
 )
 

@@ -29,6 +29,8 @@ import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.automirrored.rounded.HelpCenter
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -91,6 +93,7 @@ import com.psl.pasalhub.core.application.utils.screens.formatPrice
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.dashboard.order.viewmodel.OrderViewModel
 import com.psl.pasalhub.dashboard.products.repository.Resource
+import com.psl.pasalhub.dashboard.profile.viewmodel.PasswordUpdateStatus
 import com.psl.pasalhub.dashboard.profile.viewmodel.ProfileViewModel
 import com.psl.pasalhub.ui.theme.LocalDimens
 import java.text.SimpleDateFormat
@@ -111,6 +114,7 @@ fun ProfileScreen(
     val isSyncingState by viewModel.isSyncing.collectAsStateWithLifecycle()
     val productResource by viewModel.homeProductsState.collectAsStateWithLifecycle()
     val storedPassword by viewModel.userPassword.collectAsStateWithLifecycle()
+    val passwordUpdateStatus by viewModel.passwordUpdateStatus.collectAsStateWithLifecycle()
     val memberPoints by viewModel.memberPoints.collectAsStateWithLifecycle()
     val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
     val dimens = LocalDimens.current
@@ -418,11 +422,14 @@ fun ProfileScreen(
 
     if (showPasswordSheet) {
         ChangePasswordBottomSheet(
-            onDismiss = { showPasswordSheet = false },
+            onDismiss = {
+                viewModel.resetPasswordStatus()
+                showPasswordSheet = false
+            },
             storedPassword = storedPassword ?: "",
+            status = passwordUpdateStatus,
             onUpdate = { newPass ->
                 viewModel.updatePassword(currentUser?.email ?: "", newPass)
-                showPasswordSheet = false
             },
             isDark = isDark
         )
@@ -462,6 +469,7 @@ fun ProfileScreen(
 fun ChangePasswordBottomSheet(
     onDismiss: () -> Unit,
     storedPassword: String,
+    status: PasswordUpdateStatus,
     onUpdate: (String) -> Unit,
     isDark: Boolean
 ) {
@@ -469,11 +477,21 @@ fun ChangePasswordBottomSheet(
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    var currentVisible by remember { mutableStateOf(false) }
+    var newVisible by remember { mutableStateOf(false) }
+    var confirmVisible by remember { mutableStateOf(false) }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val cardColor = if (isDark) Color(0xFF1B1B1D) else Color.White
     val textColor = if (isDark) Color.White else Color(0xFF212529)
     val accentColor = MaterialTheme.colorScheme.primary
+
+    LaunchedEffect(status) {
+        if (status is PasswordUpdateStatus.Success) {
+            onDismiss()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -488,18 +506,41 @@ fun ChangePasswordBottomSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                "Change Password",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
-                color = textColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Change Password",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = textColor
+                )
+                if (status is PasswordUpdateStatus.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            }
 
             Text(
                 "Update your account security with a new strong password.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isDark) Color.Gray else Color(0xFF6C757D)
             )
+
+            if (status is PasswordUpdateStatus.Error) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = status.message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -509,13 +550,21 @@ fun ChangePasswordBottomSheet(
                 label = { Text("Current Password") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (currentVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                 leadingIcon = {
                     Icon(
                         Icons.Rounded.Lock,
                         contentDescription = null,
                         tint = accentColor
                     )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { currentVisible = !currentVisible }) {
+                        Icon(
+                            imageVector = if (currentVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null
+                        )
+                    }
                 }
             )
 
@@ -525,13 +574,21 @@ fun ChangePasswordBottomSheet(
                 label = { Text("New Password") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (newVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                 leadingIcon = {
                     Icon(
                         Icons.Rounded.VpnKey,
                         contentDescription = null,
                         tint = accentColor
                     )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { newVisible = !newVisible }) {
+                        Icon(
+                            imageVector = if (newVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null
+                        )
+                    }
                 }
             )
 
@@ -541,30 +598,50 @@ fun ChangePasswordBottomSheet(
                 label = { Text("Confirm New Password") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (confirmVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                 leadingIcon = {
                     Icon(
                         Icons.Rounded.CheckCircle,
                         contentDescription = null,
                         tint = accentColor
                     )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { confirmVisible = !confirmVisible }) {
+                        Icon(
+                            imageVector = if (confirmVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null
+                        )
+                    }
                 }
             )
 
             val isMatch = newPassword == confirmPassword && newPassword.isNotEmpty()
             val isCurrentCorrect = currentPassword == storedPassword
+            val isValidLength = newPassword.length >= 6
+
+            if (newPassword.isNotEmpty() && !isValidLength) {
+                Text(
+                    "Password must be at least 6 characters long",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
 
             Button(
-                onClick = { if (isMatch && isCurrentCorrect) onUpdate(newPassword) },
+                onClick = { if (isMatch && isCurrentCorrect && isValidLength) onUpdate(newPassword) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .padding(top = 8.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = isMatch && isCurrentCorrect,
+                enabled = isMatch && isCurrentCorrect && isValidLength && status !is PasswordUpdateStatus.Loading,
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor)
             ) {
-                Text("Update Password", fontWeight = FontWeight.Bold)
+                Text(
+                    if (status is PasswordUpdateStatus.Loading) "Updating..." else "Update Password",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

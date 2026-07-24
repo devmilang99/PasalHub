@@ -11,7 +11,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -20,10 +19,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,11 +31,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -114,9 +110,11 @@ import coil.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.psl.pasalhub.ai.domain.model.AiChatMessage
 import com.psl.pasalhub.ai.presentation.components.AiChatBubble
 import com.psl.pasalhub.ai.presentation.components.AiListeningAnimation
 import com.psl.pasalhub.ai.presentation.components.MovingGradientsBackground
+import com.psl.pasalhub.ai.presentation.components.UserChatBubble
 import com.psl.pasalhub.core.application.utils.screens.formatPrice
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
@@ -140,7 +138,7 @@ fun AISearchScreen(
     val isAiProcessing by aiViewModel.isAiProcessing.collectAsStateWithLifecycle()
     val aiSearchError by aiViewModel.aiSearchError.collectAsStateWithLifecycle()
     val productsState by aiViewModel.aiProductsState.collectAsStateWithLifecycle()
-    val recommendationMessage by aiViewModel.recommendationMessage.collectAsStateWithLifecycle()
+    val messages by aiViewModel.messages.collectAsStateWithLifecycle()
     val searchHistory by aiViewModel.searchHistory.collectAsStateWithLifecycle()
     val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -163,7 +161,12 @@ fun AISearchScreen(
                 val source = ImageDecoder.createSource(context.contentResolver, it)
                 ImageDecoder.decodeBitmap(source)
             } else {
-                MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                @Suppress("DEPRECATION")
+                val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                // getBitmap doesn't guarantee software config or mutability needed for AI processing sometimes,
+                // so we ensure it's in a standard format if needed, though usually, this suffices for basic migration.
+                // The branch for P+ above is the modern way.
+                bitmap
             }
             aiViewModel.performVisualSearch(bitmap)
         }
@@ -183,9 +186,12 @@ fun AISearchScreen(
     }
 
     BackHandler {
-        searchQuery = ""
-        aiViewModel.clearSearch()
-        onBackClick()
+        if (messages.isNotEmpty()) {
+            aiViewModel.clearSearch()
+        } else {
+            searchQuery = ""
+            onBackClick()
+        }
     }
 
     Scaffold(
@@ -220,16 +226,22 @@ fun AISearchScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            searchQuery = ""
-                            aiViewModel.clearSearch()
-                            onBackClick()
+                            if (messages.isNotEmpty()) {
+                                aiViewModel.clearSearch()
+                            } else {
+                                searchQuery = ""
+                                onBackClick()
+                            }
                         },
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                         ),
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            if (messages.isNotEmpty()) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = if (messages.isNotEmpty()) "Clear Search" else "Back"
+                        )
                     }
                 },
                 actions = {
@@ -256,118 +268,32 @@ fun AISearchScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .consumeWindowInsets(paddingValues)
                     .padding(horizontal = dimens.padding)
-                    .imePadding()
             ) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    AnimatedContent(
-                        targetState = isAiProcessing to productsState,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
-                                animationSpec = tween(
-                                    500
-                                )
-                            )
-                        },
-                        label = "content_transition"
-                    ) { (processing, state) ->
-                        if (processing) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AiListeningAnimation(
-                                    modifier = Modifier.fillMaxWidth(0.8f),
-                                    text = "Analyzing your intent..."
-                                )
-                            }
-                        } else if (aiSearchError != null) {
-                            ErrorStateView(error = aiSearchError!!) {
-                                aiViewModel.performAiSearch("best deals")
-                            }
-                        } else {
-                            ResultsOrHistory(
-                                productsState = state,
-                                recommendationMessage = recommendationMessage,
-                                searchQuery = searchQuery,
-                                username = username,
-                                isDark = isDark,
-                                onProductClick = onProductClick,
-                                onQuickActionClick = {
-                                    searchQuery = it
-                                    aiViewModel.performAiSearch(it)
-                                }
-                            )
+                    if (aiSearchError != null) {
+                        ErrorStateView(error = aiSearchError!!) {
+                            aiViewModel.performAiSearch("best deals")
                         }
-                    }
-                }
-
-                // Suggestions above search bar when focused and keyboard is visible
-                AnimatedVisibility(
-                    visible = isSearchFocused && isKeyboardVisible && !isAiProcessing,
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                                RoundedCornerShape(20.dp)
-                            )
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            "SUGGESTIONS",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                    } else {
+                        ResultsOrHistory(
+                            messages = messages,
+                            isAiProcessing = isAiProcessing,
+                            productsState = productsState,
+                            searchQuery = searchQuery,
+                            username = username,
+                            isDark = isDark,
+                            onProductClick = onProductClick,
+                            onQuickActionClick = {
+                                aiViewModel.performAiSearch(it)
+                                searchQuery = ""
+                            }
                         )
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            listOf(
-                                "Nike White Sneakers under 200",
-                                "Noise Cancelling Headphones",
-                                "Organic Cotton T-Shirt",
-                                "Gold Plated Necklace",
-                                "HomeMaster Air Purifier"
-                            ).forEach { suggestion ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            searchQuery = suggestion
-                                            aiViewModel.performAiSearch(suggestion)
-                                            focusManager.clearFocus()
-                                            isSearchFocused = false
-                                        }
-                                        .padding(vertical = 12.dp, horizontal = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Search,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = suggestion,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -395,9 +321,12 @@ fun AISearchScreen(
                             keyboardController?.hide()
                             focusManager.clearFocus()
                             aiViewModel.performAiSearch(searchQuery)
+                            searchQuery = ""
                         }
                     }
                 )
+
+                // Branding Footer will appear here if needed or at the bottom of the list
             }
         }
 
@@ -605,28 +534,43 @@ fun SearchInputBar(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ResultsOrHistory(
+    messages: List<AiChatMessage>,
+    isAiProcessing: Boolean,
     productsState: Resource<List<ProductDto>>,
-    recommendationMessage: String?,
     searchQuery: String,
     username: String,
     isDark: Boolean,
     onProductClick: (ProductDto) -> Unit,
     onQuickActionClick: (String) -> Unit
 ) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(messages.size, isAiProcessing) {
+        if (messages.isNotEmpty() || isAiProcessing) {
+            val totalItems = messages.size + (if (isAiProcessing) 1 else 0)
+            if (totalItems > 0) {
+                listState.animateScrollToItem(totalItems - 1)
+            }
+        }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(LocalDimens.current.small),
         contentPadding = PaddingValues(top = 4.dp, bottom = LocalDimens.current.medium)
     ) {
-        // AI response should always be shown if it exists
-        if (recommendationMessage != null) {
-            item {
-                AiChatBubble(message = recommendationMessage)
+        // Show chat messages history
+        items(messages, key = { it.id }) { message ->
+            if (message.isUser) {
+                UserChatBubble(message = message)
+            } else {
+                AiChatBubble(message = message.text ?: "")
             }
         }
 
-        when {
-            productsState is Resource.Success && productsState.data.isNotEmpty() -> {
+        when (productsState) {
+            is Resource.Success if productsState.data.isNotEmpty() -> {
                 val products = productsState.data
                 item {
                     Text(
@@ -652,18 +596,19 @@ fun ResultsOrHistory(
                 }
             }
 
-            productsState is Resource.Success && searchQuery.isNotEmpty() -> {
-                // Only show empty view if we don't have a message or we explicitly want to show it
-                if (recommendationMessage == null) {
-                    item { EmptyResultsView(query = searchQuery) }
+            is Resource.Success if messages.isNotEmpty() && !isAiProcessing -> {
+                // Show empty view if we don't have products for the query and AI is done thinking
+                item {
+                    val lastUserQuery = messages.lastOrNull { it.isUser }?.text ?: ""
+                    EmptyResultsView(query = lastUserQuery)
                 }
             }
 
-            productsState is Resource.Error -> {
+            is Resource.Error -> {
                 item { Text("Error loading results", modifier = Modifier.padding(16.dp)) }
             }
 
-            productsState is Resource.Loading -> {
+            is Resource.Loading -> {
                 item {
                     Box(
                         modifier = Modifier
@@ -677,63 +622,77 @@ fun ResultsOrHistory(
             }
 
             else -> {
-                // Initial State: Welcome Message
-                item {
-                    var visible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) { visible = true }
+                if (messages.isEmpty()) {
+                    // Initial State: Welcome Message
+                    item {
+                        var visible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { visible = true }
 
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(tween(1000)) + slideInVertically(tween(1000)) { 40 }
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = LocalDimens.current.large),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        AnimatedVisibility(
+                            visible = visible,
+                            enter = fadeIn(tween(1000)) + slideInVertically(tween(1000)) { 40 }
                         ) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                shape = CircleShape,
-                                modifier = Modifier.size(LocalDimens.current.logoSize)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = LocalDimens.current.large),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Icon(
-                                    Icons.Rounded.AutoAwesome,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(LocalDimens.current.small),
-                                    tint = MaterialTheme.colorScheme.primary
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(LocalDimens.current.logoSize)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(LocalDimens.current.small),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = "Hi, $username!",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "What can I help you find today?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = "Hi, $username!",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "What can I help you find today?",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
                         }
                     }
-                }
-                item {
-                    QuickActionCards { query ->
-                        onQuickActionClick(query)
+                    item {
+                        QuickActionCards { query ->
+                            onQuickActionClick(query)
+                        }
                     }
                 }
             }
         }
 
-        item {
-            BrandingFooter()
+        if (isAiProcessing) {
+            item(key = "processing_animation") {
+                AiListeningAnimation(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                )
+            }
+        }
+
+        if (messages.isEmpty() && !isAiProcessing) {
+            item {
+                BrandingFooter()
+            }
         }
     }
 }
@@ -1052,16 +1011,16 @@ fun EmptyResultsView(query: String) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "No results found for \"$query\"",
+            "No direct matches found",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Try rephrasing your question for better AI results.",
+            "We couldn't find items for \"$query\". Try using broader keywords or checking another category.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 4.dp)
+            modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
         )
     }
 }

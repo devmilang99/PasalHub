@@ -11,7 +11,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -23,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import com.psl.pasalhub.ui.theme.DarkGreen
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -72,11 +72,9 @@ fun MovingGradientsBackground(
         label = "time"
     )
 
-    val color1 = MaterialTheme.colorScheme.surface
-    val color2 =
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.2f else 0.15f)
-    val color3 =
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (isDark) 0.15f else 0.1f)
+    val color1 = if (isDark) Color.Black else Color(0xFF022C22)
+    val color2 = DarkGreen.copy(alpha = if (isDark) 0.35f else 0.2f)
+    val color3 = Color.Black
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         ShaderBackground(

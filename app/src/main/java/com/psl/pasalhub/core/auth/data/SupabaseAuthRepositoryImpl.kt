@@ -116,6 +116,12 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         syncUserProfile()
     }
 
+    override suspend fun updatePassword(newPassword: String) {
+        auth.updateUser {
+            password = newPassword
+        }
+    }
+
     private fun syncUserProfile() {
         // Trigger the sequential multi-step sync chain for login
         syncManager.triggerLoginSync()

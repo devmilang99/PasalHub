@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1079515205022",
+    "project_id": "pasal-hub",
+    "storage_bucket": "pasal-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079515205022:android:8718f428ff44d101cd1a8f",
+        "android_client_info": {
+          "package_name": "com.psl.pasalhub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1079515205022-ig535etmdi6l9sc98hrj1ojb610sgc7p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB30OJJ-BnkyG5HIJFhWadv9c13-PWz4QA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079515205022-ig535etmdi6l9sc98hrj1ojb610sgc7p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
