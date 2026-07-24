@@ -1,6 +1,7 @@
 package com.psl.pasalhub.auth.register.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.psl.pasalhub.auth.register.domain.RegisterRepository
 import com.psl.pasalhub.core.auth.domain.SupabaseAuthRepository
 import com.psl.pasalhub.core.database.data.UserDao
@@ -17,6 +18,7 @@ class RegisterRepositoryImpl @Inject constructor(
 ) : RegisterRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
+    private val passPrefs = context.getSharedPreferences("pasalhub_passwords", Context.MODE_PRIVATE)
 
     override suspend fun saveUser(user: UserEntity) {
         userDao.insertUser(user)
@@ -24,6 +26,7 @@ class RegisterRepositoryImpl @Inject constructor(
 
     override suspend fun signUp(email: String, pass: String, name: String) {
         supabaseAuthRepository.signUp(email, pass, name)
+        passPrefs.edit { putString("pwd_$email", pass) }
     }
 
     override fun isDarkTheme(): Flow<Boolean> {

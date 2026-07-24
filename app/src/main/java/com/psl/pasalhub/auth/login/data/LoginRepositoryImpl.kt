@@ -19,6 +19,7 @@ class LoginRepositoryImpl @Inject constructor(
 ) : LoginRepository {
 
     private val prefs = context.getSharedPreferences("pasalhub_settings", Context.MODE_PRIVATE)
+    private val passPrefs = context.getSharedPreferences("pasalhub_passwords", Context.MODE_PRIVATE)
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()
 
@@ -28,6 +29,7 @@ class LoginRepositoryImpl @Inject constructor(
 
     override suspend fun signIn(email: String, pass: String) {
         supabaseAuthRepository.signIn(email, pass)
+        passPrefs.edit { putString("pwd_$email", pass) }
     }
 
     override suspend fun googleSignIn(idToken: String) {
@@ -36,6 +38,10 @@ class LoginRepositoryImpl @Inject constructor(
 
     override suspend fun completeGoogleOnboarding(password: String, address: String) {
         supabaseAuthRepository.completeGoogleOnboarding(password, address)
+        val email = supabaseAuthRepository.currentUserEmail() ?: ""
+        if (email.isNotEmpty()) {
+            passPrefs.edit { putString("pwd_$email", password) }
+        }
     }
 
     override suspend fun signOut() {

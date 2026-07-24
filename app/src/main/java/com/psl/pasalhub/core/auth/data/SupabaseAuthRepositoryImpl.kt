@@ -113,6 +113,9 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         }
 
         postgrest["profiles"].upsert(profileData)
+        auth.updateUser {
+            this.password = password
+        }
         syncUserProfile()
     }
 
@@ -120,6 +123,10 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         auth.updateUser {
             password = newPassword
         }
+    }
+
+    override fun currentUserEmail(): String? {
+        return auth.currentUserOrNull()?.email
     }
 
     private fun syncUserProfile() {

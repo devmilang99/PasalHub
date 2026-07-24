@@ -286,19 +286,17 @@ fun ProfileScreen(
                 // Main Account Actions List Card
                 SectionHeader("ACCOUNT SETTINGS")
                 PremiumMenuCard(isDark) {
-                    if (currentUser?.isGoogleUser == false) {
-                        PremiumMenuItem(
-                            icon = Icons.Rounded.Security,
-                            title = "Change Password",
-                            subtitle = "Update your login credentials",
-                            onClick = { showPasswordSheet = true },
-                            isDark = isDark
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            color = borderColor
-                        )
-                    }
+                    PremiumMenuItem(
+                        icon = Icons.Rounded.Security,
+                        title = "Change Password",
+                        subtitle = "Update your login credentials",
+                        onClick = { showPasswordSheet = true },
+                        isDark = isDark
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = borderColor
+                    )
                     PremiumMenuItem(
                         icon = Icons.Rounded.RateReview,
                         title = "My Reviews",
