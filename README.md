@@ -14,7 +14,7 @@
 **A next-generation native Android marketplace built for speed, intelligence, and seamless shopping.**
 Discover, search, and shop — powered by on-device AI and real-time sync.
 
-[Features](#-features) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [Screenshots](#-screenshots) · [Contributing](#-contributing)
+[Features](#-features) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [Contributing](#-contributing)
 
 ---
 
@@ -28,29 +28,52 @@ Built with scalability and performance at its core, PasalHub follows strict Clea
 
 ---
 
+## 📱 Screenshots
+
+### 🔑 Authentication & Discovery
+| Login Screen | Home Dashboard | Product Details |
+|:---:|:---:|:---:|
+| ![Login](screenshots/01_login.png) | ![Home](screenshots/02_home.png) | ![Product Detail](screenshots/03_product_detail.png) |
+
+### 🛒 Shopping Flow
+| My Cart | Checkout | Review Order |
+|:---:|:---:|:---:|
+| ![Cart](screenshots/04_cart.png) | ![Checkout](screenshots/05_checkout.png) | ![Review Order](screenshots/06_review_order.png) |
+
+### 📦 Order Management & Tracking
+| Recent Orders | Live Tracking | Completed Orders |
+|:---:|:---:|:---:|
+| ![Recent Orders](screenshots/07_recent_orders.png) | ![Live Tracking](screenshots/08_live_tracking.png) | ![Completed Orders](screenshots/09_completed_orders.png) |
+
+### 👤 Personalization & Support
+| Cancelled Orders | User Profile |
+|:---:|:---:|
+| ![Cancelled Orders](screenshots/10_cancelled_orders.png) | ![Profile](screenshots/11_profile.png) |
+
+---
+
 ## ✨ Features
 
 ### 🤖 AI & Intelligence
 - **Gemini AI Conversational Assistant** — Integrated via the Google Gemini API & Function Calling to transform natural language queries into dynamic catalog filtering and personalized recommendations.
-- **On-Device Visual Search** *(Search by Image)* — Embedded TensorFlow Lite (MobileNetV3 Small Quantized) model for real-time, privacy-focused image embeddings and feature extraction directly on the client.
+- **On-Device Visual Search** — Embedded TensorFlow Lite (MobileNetV3 Small Quantized) model for real-time, privacy-focused image embeddings directly on the client.
 - **Smart Recommendations** — Context-aware product suggestions driven by user behavior and conversational intent.
 
 ### 📦 Catalog & Orders
 - **Real-Time Catalog Sync** — Synchronized with Supabase Realtime (Postgres DB) for instant inventory updates.
 - **Multi-Vendor Listings** — Support for multiple sellers (e.g., "Pasal Hub Official", "Luxury Direct") within a unified catalog experience.
-- **Live Order Tracking** — Real-time order status updates from checkout to delivery via WorkManager-backed tracking.
-- **Dynamic Inventory Management** — Stock levels reflected instantly across all connected clients.
+- **Live Order Tracking** — Real-time order status updates from checkout to delivery via WorkManager-backed tracking and live progress bars.
+- **Dynamic Inventory Management** — Stock levels and price updates reflected instantly across all connected clients.
 
 ### 🔐 Security & Auth
-- **Google ID & Supabase Auth** — Frictionless, secure onboarding with federated identity and Credential Manager support.
-- **Secure Local Storage** — Preferences and session data managed via Android `SharedPreferences` with modular auth state handling.
-- **Session Management** — Secure token handling and automatic session refresh via Supabase Auth integration.
+- **Google ID & Supabase Auth** — Frictionless onboarding with federated identity and Android Credential Manager support.
+- **Secure local state** — Session data managed via robust auth state handling and automatic token refresh.
+- **Safe Navigation** — Role-based access and secure routing for sensitive checkout and profile flows.
 
 ### ⚡ Performance & UX
-- **Offline-First Architecture** — Full browsing and cart functionality without an internet connection via Room Database with RemoteMediator for seamless paging.
-- **Sub-60fps Rendering** — Smooth UI across form factors, validated with Macrobenchmark and optimized Compose states.
-- **Fast Cold Starts** — Baseline Profiles for optimized launch times.
+- **Offline-First Architecture** — Full browsing and cart functionality without an internet connection via Room Database.
 - **Adaptive Layouts** — Responsive Compose UI across phones, foldables, and tablets using Material 3 Adaptive Layouts.
+- **Fast Cold Starts** — Baseline Profiles generated for optimized launch times and smooth scroll performance.
 - **Agentic System Actions** — Exposes catalog discovery via Android AppFunctions for system-level shortcuts and AI agent interactions.
 
 ---
@@ -63,14 +86,13 @@ Built with scalability and performance at its core, PasalHub follows strict Clea
 | **Architecture** | Clean Architecture, MVVM, Coroutines, Kotlin Flow |
 | **AI / ML** | Google Gemini API (Function Calling), TensorFlow Lite (MobileNetV3), CameraX |
 | **Backend & Sync** | Supabase (Postgres, Realtime, Auth), Ktor Client |
-| **Local Data** | Room Database (with Paging 3), SharedPreferences, WorkManager |
+| **Local Data** | Room Database (with Paging 3), WorkManager |
 | **DI & Testing** | Hilt, Roborazzi (Screenshot Testing), Mockito, JUnit 4, Espresso |
 | **Performance** | Baseline Profiles, Macrobenchmark, R8 / ProGuard Optimization |
-| **CI/CD** | Gradle Version Catalogs, Secrets Gradle Plugin |
 
 ---
 
-## 📐 Architecture
+## 🏗️ Architecture
 
 PasalHub follows a **Clean Architecture** pattern with a layered separation of concerns and a **uni-directional data flow (UDF)**. The codebase is organized by feature modules:
 
@@ -78,19 +100,8 @@ PasalHub follows a **Clean Architecture** pattern with a layered separation of c
 app/src/main/java/com/psl/pasalhub/
 ├── ai/                      # Gemini AI integration, AppFunctions, and search routing
 ├── auth/                    # Login, Register, Forgot Password flows
-├── core/                    # Cross-cutting concerns
-│   ├── application/         # MainActivity, App class, Global ViewModels
-│   ├── auth/                # Supabase Auth repository implementations
-│   ├── database/            # Room DB, Entities, and DAOs
-│   ├── di/                  # Hilt modules
-│   ├── networking/          # Ktor client, DTOs, and Interceptors
-│   └── sync/                # DataSyncRepository and SyncManager
-├── dashboard/               # Core marketplace features
-│   ├── cart/                # Cart management and Order Review
-│   ├── home/                # Product listing and filtering
-│   ├── order/               # Order history and Live Tracking
-│   ├── products/            # Product Detail and RemoteMediators
-│   └── profile/             # User profile and settings
+├── core/                    # Cross-cutting concerns (Database, DI, Networking, Sync)
+├── dashboard/               # Core marketplace features (Home, Cart, Orders, Profile)
 ├── initial/                 # App startup (Splash, Onboarding, Theme)
 ├── ui/                      # Global theme and design system
 └── visualsearch/            # TFLite Visual Search Engine
@@ -102,98 +113,27 @@ app/src/main/java/com/psl/pasalhub/
 
 ### Prerequisites
 
-Ensure you have the following installed:
-
-- [Android Studio](https://developer.android.com/studio) (latest stable or preview for SDK 37 support)
+- [Android Studio](https://developer.android.com/studio) (latest stable)
 - JDK 17+
-- Android SDK (minSdk 24+)
-- A [Supabase](https://supabase.com) project (Postgres + Auth + Realtime enabled)
-- A [Google Gemini API key](https://ai.google.dev/)
+- A [Supabase](https://supabase.com) project & [Google Gemini API key](https://ai.google.dev/)
 
 ### Installation
 
-**1. Clone the repository**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/PasalHub.git
+   ```
 
-```bash
-git clone https://github.com/your-username/PasalHub.git
-cd PasalHub
-```
+2. **Configure Secrets**
+   Create a `.env` file in the root directory:
+   ```properties
+   SUPABASE_URL="your_supabase_url"
+   SUPABASE_ANON_KEY="your_supabase_anon_key"
+   GEMINI_API_KEY="your_gemini_api_key"
+   ```
 
-**2. Configure Secrets**
-
-Create a `.env` file in the root directory (referencing `.env.example`):
-
-```properties
-SUPABASE_URL="your_supabase_url"
-SUPABASE_ANON_KEY="your_supabase_anon_key"
-GEMINI_API_KEY="your_gemini_api_key"
-```
-
-The `Secrets Gradle Plugin` will automatically expose these to the `BuildConfig` during build.
-
-**3. Sync & build**
-
-```bash
-./gradlew assembleDebug
-```
-
-*Note: The `generateLocalKeystore` task will automatically run to set up your debug signing environment.*
-
-**4. Run the app**
-
-Open the project in Android Studio and run it on an emulator/device (API 24+), or via CLI:
-
-```bash
-./gradlew installDebug
-```
-
----
-
-## 🧪 Running Tests
-
-```bash
-# Unit tests (JUnit 4, Mockito)
-./gradlew test
-
-# Instrumented tests
-./gradlew connectedCheck
-
-# Screenshot tests (Roborazzi)
-./gradlew verifyRoborazziDebug
-
-# Macrobenchmark (startup & scroll performance)
-./gradlew :baselineprofile:connectedCheck
-```
-
----
-
-## 📱 Screenshots
-
-> _Coming soon — screenshots will be added upon first stable release._
-
-| Home & Catalog | Visual Search | AI Assistant | Order Tracking |
-|:---:|:---:|:---:|:---:|
-| _(soon)_ | _(soon)_ | _(soon)_ | _(soon)_ |
-
----
-
-## 🗺 Roadmap
-
-- [x] Core catalog & order management
-- [x] On-device visual search (MobileNetV3)
-- [x] Gemini conversational assistant with Function Calling
-- [x] Baseline Profiles & Macrobenchmark integration
-- [x] Android AppFunctions for system-level discovery
-- [ ] Multi-vendor seller dashboard
-- [ ] Wishlist & price-drop notifications
-- [ ] AR product preview
-- [ ] Wear OS companion app
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow the [Conventional Commits](https://www.conventionalcommits.org/) convention for pull requests.
+3. **Build & Run**
+   Open in Android Studio and run. The `generateLocalKeystore` task will handle debug signing automatically.
 
 ---
 
