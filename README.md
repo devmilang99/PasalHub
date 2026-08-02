@@ -61,6 +61,12 @@ offline-first.
 |:--------------------------------------------------------:|:--------------------------------------:|
 | ![Cancelled Orders](screenshots/10_cancelled_orders.png) | ![Profile](screenshots/11_profile.png) |
 
+### 🤖 AI Assistant
+
+|                 AI Initial Page                 |                 AI Search Results                  |
+|:-----------------------------------------------:|:--------------------------------------------------:|
+| ![AI Initial](screenshots/12_ai_initial.png)    | ![AI Search Results](screenshots/13_ai_search_results.png) |
+
 ---
 
 ## ✨ Features
