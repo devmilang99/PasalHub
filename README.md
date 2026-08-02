@@ -51,15 +51,15 @@ offline-first.
 
 ### 📦 Order Management & Tracking
 
-|                   Recent Orders                    |                   Live Tracking                    |                     Completed Orders                     |
-|:--------------------------------------------------:|:--------------------------------------------------:|:--------------------------------------------------------:|
-| ![Recent Orders](screenshots/07_recent_orders.png) | ![Live Tracking](screenshots/08_live_tracking.png) | ![Completed Orders](screenshots/09_completed_orders.png) |
+|                   Recent Orders                    |                   Live Tracking                    |                     Completed Orders                     |                    Cancelled Orders                    |
+|:--------------------------------------------------:|:--------------------------------------------------:|:--------------------------------------------------------:|:-----------------------------------------------------:|
+| ![Recent Orders](screenshots/07_recent_orders.png) | ![Live Tracking](screenshots/08_live_tracking.png) | ![Completed Orders](screenshots/09_completed_orders.png) | ![Cancelled Orders](screenshots/10_cancelled_orders.png) |
 
 ### 👤 Personalization & Support
 
-|                     Cancelled Orders                     |              User Profile              |
-|:--------------------------------------------------------:|:--------------------------------------:|
-| ![Cancelled Orders](screenshots/10_cancelled_orders.png) | ![Profile](screenshots/11_profile.png) |
+|              User Profile              |
+|:--------------------------------------:|
+| ![Profile](screenshots/11_profile.png) |
 
 ### 🤖 AI Assistant
 
