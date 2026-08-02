@@ -43,6 +43,12 @@ offline-first.
 |:----------------------------------:|:--------------------------------:|:----------------------------------------------------:|
 | ![Login](screenshots/01_login.png) | ![Home](screenshots/02_home.png) | ![Product Detail](screenshots/03_product_detail.png) |
 
+### 🤖 AI Assistant
+
+|                 AI Initial Page                 |                 AI Search Results                  |
+|:-----------------------------------------------:|:--------------------------------------------------:|
+| ![AI Initial](screenshots/12_ai_initial.png)    | ![AI Search Results](screenshots/13_ai_search_results.png) |
+
 ### 🛒 Shopping Flow
 
 |             My Cart              |                 Checkout                 |                   Review Order                   |
@@ -60,12 +66,6 @@ offline-first.
 |              User Profile              |
 |:--------------------------------------:|
 | ![Profile](screenshots/11_profile.png) |
-
-### 🤖 AI Assistant
-
-|                 AI Initial Page                 |                 AI Search Results                  |
-|:-----------------------------------------------:|:--------------------------------------------------:|
-| ![AI Initial](screenshots/12_ai_initial.png)    | ![AI Search Results](screenshots/13_ai_search_results.png) |
 
 ---
 
