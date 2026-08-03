@@ -21,6 +21,7 @@ import com.psl.pasalhub.dashboard.products.repository.Resource
 import com.psl.pasalhub.visualsearch.VisualSearchEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -58,13 +59,21 @@ class AiSearchViewModel @Inject constructor(
     private val _messages = MutableStateFlow<List<AiChatMessage>>(emptyList())
     val messages: StateFlow<List<AiChatMessage>> = _messages.asStateFlow()
 
+    private var searchJob: Job? = null
+
     companion object {
         private const val MAX_CHAT_HISTORY = 10
+        const val MAX_REQUESTS = 5
     }
 
     // AI Search State
     private val _isAiProcessing = MutableStateFlow(false)
     val isAiProcessing: StateFlow<Boolean> = _isAiProcessing.asStateFlow()
+
+    private val _showCancelDialog = MutableStateFlow(false)
+    val showCancelDialog: StateFlow<Boolean> = _showCancelDialog.asStateFlow()
+
+    private val _isPaused = MutableStateFlow(false)
 
     private val _aiSearchError = MutableStateFlow<String?>(null)
     val aiSearchError: StateFlow<String?> = _aiSearchError.asStateFlow()
@@ -77,8 +86,17 @@ class AiSearchViewModel @Inject constructor(
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
 
+    private var firstPrompt: String? = null
+    private var firstBitmap: Bitmap? = null
+    private val _retryCount = MutableStateFlow(0)
+    val retryCount: StateFlow<Int> = _retryCount.asStateFlow()
+
+    private val _requestCount = MutableStateFlow(0)
+    val requestCount: StateFlow<Int> = _requestCount.asStateFlow()
+
     init {
         Log.d("AiSearchViewModel", "Initializing AI Search System...")
+        _requestCount.value = appPrefs.getAiRequestCount()
         viewModelScope.launch {
             try {
                 val modelList = geminiRouter.listAvailableModels()
@@ -147,8 +165,15 @@ class AiSearchViewModel @Inject constructor(
     fun performAiSearch(query: String) {
         if (query.isBlank()) return
 
+        if (firstPrompt == null && firstBitmap == null) {
+            firstPrompt = query
+        }
+
+        searchJob?.cancel()
         _isAiProcessing.value = true
         _aiSearchError.value = null
+        _manualProductList.value = null
+        _aiSearchIntent.value = null
 
         // Add to UI messages
         _messages.value = _messages.value + AiChatMessage(text = query, isUser = true)
@@ -163,13 +188,17 @@ class AiSearchViewModel @Inject constructor(
     }
 
     fun performVisualSearch(bitmap: Bitmap) {
+        if (firstPrompt == null && firstBitmap == null) {
+            firstBitmap = bitmap
+        }
         _isAiProcessing.value = true
         _manualProductList.value = null
 
         // Add to UI messages
         _messages.value = _messages.value + AiChatMessage(image = bitmap, isUser = true)
 
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _aiSearchError.value = null
             _recommendationMessage.value = "Processing image..."
 
@@ -207,102 +236,106 @@ class AiSearchViewModel @Inject constructor(
                     )
                 )
 
-                executeSearch(visualContent)
+                executeSearchInternal(visualContent)
             } catch (e: Exception) {
                 Log.e("AiSearchViewModel", "Visual Search failed", e)
-                _aiSearchError.value = "Failed to process image."
+                _aiSearchError.value = "Failed to process image. Please try again after 5 minutes."
                 _isAiProcessing.value = false
             }
         }
     }
 
     private fun executeSearch(userContent: Content) {
-        viewModelScope.launch {
-            _isAiProcessing.value = true
-            _aiSearchError.value = null
-            _aiSearchIntent.value = null
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            executeSearchInternal(userContent)
+        }
+    }
 
-            try {
-                addToHistory(userContent)
-                var response = geminiRouter.routeSearchWithContent(_chatHistory)
+    private suspend fun executeSearchInternal(userContent: Content) {
+        if (_requestCount.value >= MAX_REQUESTS) {
+            _aiSearchError.value =
+                "You've reached the AI usage limit for today. Please come back tomorrow."
+            _isAiProcessing.value = false
+            return
+        }
 
-                // Function Calling Loop
-                var candidate = response.candidates?.firstOrNull()
-                val partsReceived = candidate?.content?.parts ?: emptyList()
-                Log.d(
-                    "AiSearchViewModel",
-                    "Gemini response received. FinishReason: ${candidate?.finishReason}, Parts: ${partsReceived.size}"
-                )
+        _isAiProcessing.value = true
+        _aiSearchError.value = null
+        _aiSearchIntent.value = null
+        _isPaused.value = false
+        _showCancelDialog.value = false
 
-                var parts = candidate?.content?.parts ?: emptyList()
-                var functionCalls = parts.mapNotNull { it.functionCall ?: it.functionCallLegacy }
+        try {
+            _requestCount.value += 1
+            appPrefs.incrementAiRequestCount()
+            addToHistory(userContent)
+            checkPause()
+            var response = geminiRouter.routeSearchWithContent(_chatHistory)
 
-                while (functionCalls.isNotEmpty()) {
-                    val intermediateText = parts.firstOrNull { it.text != null }?.text
-                    if (!intermediateText.isNullOrBlank()) {
-                        _messages.value =
-                            _messages.value + AiChatMessage(text = intermediateText, isUser = false)
-                    }
+            // Function Calling Loop
+            var candidate = response.candidates?.firstOrNull()
+            var parts = candidate?.content?.parts ?: emptyList()
+            var functionCalls = parts.mapNotNull { it.functionCall ?: it.functionCallLegacy }
 
-                    addToHistory(candidate!!.content!!) // Add model's tool call to history
+            while (functionCalls.isNotEmpty()) {
+                checkPause()
+                val intermediateText = parts.firstOrNull { it.text != null }?.text
+                if (!intermediateText.isNullOrBlank()) {
+                    _messages.value += AiChatMessage(text = intermediateText, isUser = false)
+                }
 
-                    val responseParts = mutableListOf<Part>()
-                    for (call in functionCalls) {
-                        val result = handleFunctionCall(call)
-                        responseParts.add(
-                            Part(
-                                functionResponse = FunctionResponse(
-                                    name = call.name,
-                                    response = result,
-                                    id = call.id
-                                )
+                addToHistory(candidate!!.content!!)
+
+                val responseParts = mutableListOf<Part>()
+                for (call in functionCalls) {
+                    val result = handleFunctionCall(call)
+                    responseParts.add(
+                        Part(
+                            functionResponse = FunctionResponse(
+                                name = call.name,
+                                response = result,
+                                id = call.id
                             )
                         )
-                    }
-
-                    val responseContent = Content(role = "user", parts = responseParts)
-                    addToHistory(responseContent)
-
-                    response = geminiRouter.routeSearchWithContent(_chatHistory)
-                    candidate = response.candidates?.firstOrNull()
-                    parts = candidate?.content?.parts ?: emptyList()
-                    functionCalls = parts.mapNotNull { it.functionCall }
-                }
-
-                val finalMessage = parts.firstOrNull { it.text != null }?.text
-                if (!finalMessage.isNullOrBlank()) {
-                    // Add to UI messages
-                    _messages.value =
-                        _messages.value + AiChatMessage(text = finalMessage, isUser = false)
-                    
-                    _recommendationMessage.value = finalMessage
-                    appPrefs.emitNotification(finalMessage.take(100))
-                    addToHistory(candidate!!.content!!) // Add final response to history
-                } else if (functionCalls.isEmpty()) {
-                    Log.w(
-                        "AiSearchViewModel",
-                        "Gemini returned STOP with no content and no tool calls."
                     )
-                    _aiSearchError.value =
-                        "AI returned an empty response. This usually means the model name is incorrect or the prompt was blocked."
                 }
-            } catch (e: Exception) {
-                Log.e("AiSearchViewModel", "AI Search failed: ${e.message}", e)
-                val errorMessage = e.message ?: ""
-                if (errorMessage.contains("429") || errorMessage.contains(
-                        "quota",
-                        ignoreCase = true
-                    )
-                ) {
-                    _aiSearchError.value =
-                        "You've reached the AI usage limit for today. Please come back tomorrow or try again in a few hours."
-                } else {
-                    _aiSearchError.value = "AI Assistant is currently unavailable."
-                }
-                appPrefs.emitNotification("Error: ${e.message}")
-            } finally {
-                _isAiProcessing.value = false
+
+                val responseContent = Content(role = "user", parts = responseParts)
+                addToHistory(responseContent)
+
+                checkPause()
+                response = geminiRouter.routeSearchWithContent(_chatHistory)
+                candidate = response.candidates?.firstOrNull()
+                parts = candidate?.content?.parts ?: emptyList()
+                functionCalls = parts.mapNotNull { it.functionCall }
             }
+
+            val finalMessage = parts.firstOrNull { it.text != null }?.text
+            if (!finalMessage.isNullOrBlank()) {
+                _messages.value += AiChatMessage(text = finalMessage, isUser = false)
+                _recommendationMessage.value = finalMessage
+                appPrefs.emitNotification(finalMessage.take(100))
+                addToHistory(candidate!!.content!!)
+            } else if (functionCalls.isEmpty()) {
+                _aiSearchError.value = "AI Assistant is currently unavailable."
+            }
+        } catch (e: Exception) {
+            Log.e("AiSearchViewModel", "AI Search failed: ${e.message}", e)
+            val errorMessage = e.message ?: ""
+            if (errorMessage.contains("429") ||
+                errorMessage.contains("quota", ignoreCase = true) ||
+                errorMessage.contains("RESOURCE_EXHAUSTED")
+            ) {
+                _aiSearchError.value =
+                    "You've reached the AI usage limit for today. Please come back tomorrow."
+            } else {
+                _aiSearchError.value =
+                    "AI Assistant is currently unavailable. Please try again after 5 minutes."
+            }
+            appPrefs.emitNotification("Error: ${e.message}")
+        } finally {
+            _isAiProcessing.value = false
         }
     }
 
@@ -310,6 +343,35 @@ class AiSearchViewModel @Inject constructor(
         _chatHistory.add(content)
         while (_chatHistory.size > MAX_CHAT_HISTORY) {
             _chatHistory.removeAt(0)
+        }
+    }
+
+    fun requestCancel() {
+        if (_isAiProcessing.value) {
+            _isPaused.value = true
+            _showCancelDialog.value = true
+        }
+    }
+
+    fun resumeSearch() {
+        _isPaused.value = false
+        _showCancelDialog.value = false
+    }
+
+    fun confirmCancelSearch() {
+        _isPaused.value = false
+        _showCancelDialog.value = false
+        cancelSearch()
+    }
+
+    private fun isResultReady(): Boolean {
+        val products = aiProductsState.value
+        return products is Resource.Success && products.data.isNotEmpty()
+    }
+
+    private suspend fun checkPause() {
+        if (_isPaused.value) {
+            _isPaused.first { !it }
         }
     }
 
@@ -334,15 +396,12 @@ class AiSearchViewModel @Inject constructor(
                     min_rating = null
                 )
 
-                // Execute search
-                val searchIntent = SearchIntent(
-                    is_valid = true,
-                    fields = fields,
-                    sort_by = sortBy,
-                    fallback_message = null
+                Log.d(
+                    "AiSearchViewModel",
+                    "Tool 'search_products' called. Category: $category, Keywords: $keywords"
                 )
 
-                // Fetch actual data to return to Gemini
+                // Fetch actual data
                 val allProductsResource = if (category != null && category != "all") {
                     repository.getProductsByCategory(category).filter { it !is Resource.Loading }
                         .first()
@@ -350,40 +409,33 @@ class AiSearchViewModel @Inject constructor(
                     repository.getProducts().filter { it !is Resource.Loading }.first()
                 }
 
-                Log.d(
-                    "AiSearchViewModel",
-                    "Tool 'search_products' called. Category: $category, Keywords: $keywords"
-                )
-
                 val filtered = if (allProductsResource is Resource.Success) {
-                    Log.d(
-                        "AiSearchViewModel",
-                        "Total products in category: ${allProductsResource.data.size}"
-                    )
                     var results = applySearchFilters(allProductsResource.data, fields)
-                    Log.d("AiSearchViewModel", "Filtered results count: ${results.size}")
                     results = when (sortBy) {
                         "price_asc" -> results.sortedBy { it.price }
                         "price_desc" -> results.sortedByDescending { it.price }
                         else -> results
                     }
-                    results.take(5)
+                    results
                 } else {
-                    Log.w(
-                        "AiSearchViewModel",
-                        "Could not fetch products for tool call: $allProductsResource"
-                    )
                     emptyList()
                 }
 
-                // We update the intent to trigger the existing filtering logic in aiProductsState
-                _aiSearchIntent.value = searchIntent
+                // Update UI immediately with results
+                _manualProductList.value = filtered
+                _aiSearchIntent.value = SearchIntent(
+                    is_valid = true,
+                    fields = fields,
+                    sort_by = sortBy,
+                    fallback_message = null,
+                    product_summary = "Finding products for you..."
+                )
 
                 buildJsonObject {
                     put("status", "success")
                     put("count", filtered.size)
                     putJsonArray("products") {
-                        filtered.forEach { product ->
+                        filtered.take(5).forEach { product ->
                             add(buildJsonObject {
                                 put("id", product.id)
                                 put("title", product.title)
@@ -436,6 +488,7 @@ class AiSearchViewModel @Inject constructor(
     }
 
     fun clearSearch() {
+        searchJob?.cancel()
         _aiSearchIntent.value = null
         _manualProductList.value = null
         _aiSearchError.value = null
@@ -443,6 +496,46 @@ class AiSearchViewModel @Inject constructor(
         _isAiProcessing.value = false
         _chatHistory.clear()
         _messages.value = emptyList()
+        firstPrompt = null
+        firstBitmap = null
+        _retryCount.value = 0
+    }
+
+    fun handleRetry() {
+        if (_retryCount.value == 0) {
+            _retryCount.value = 1
+            val prompt = firstPrompt
+            val bitmap = firstBitmap
+
+            // We don't call clearSearch() here because we want to keep firstPrompt/firstBitmap
+            // but we do need to clear the current error and processing state
+            searchJob?.cancel()
+            _aiSearchError.value = null
+            _aiSearchIntent.value = null
+            _manualProductList.value = null
+            _messages.value = emptyList()
+            _chatHistory.clear()
+
+            if (prompt != null) {
+                performAiSearch(prompt)
+            } else if (bitmap != null) {
+                performVisualSearch(bitmap)
+            }
+        } else {
+            clearSearch()
+        }
+    }
+
+    fun cancelSearch() {
+        if (searchJob?.isActive == true) {
+            searchJob?.cancel()
+            _isAiProcessing.value = false
+            _recommendationMessage.value = "Search stopped."
+            _messages.value = _messages.value + AiChatMessage(
+                text = "Processing stopped by user.",
+                isUser = false
+            )
+        }
     }
 
     fun clearHistory() {

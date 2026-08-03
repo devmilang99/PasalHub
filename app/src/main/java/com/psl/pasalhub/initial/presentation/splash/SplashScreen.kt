@@ -159,19 +159,24 @@ fun SplashScreen(
 
                 Text(
                     text = "Welcome back,",
+                    modifier = Modifier.fillMaxWidth(),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Light,
                     color = secondaryTextColor,
+                    textAlign = TextAlign.Center,
                     letterSpacing = 2.sp
                 )
 
                 Text(
                     text = currentUser?.name?.uppercase() ?: "VALUED MEMBER",
-                    fontSize = 32.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = if ((currentUser?.name?.length ?: 0) > 12) 26.sp else 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = primaryTextColor,
-                    letterSpacing = 4.sp,
-                    fontFamily = FontFamily.SansSerif
+                    textAlign = TextAlign.Center,
+                    letterSpacing = if ((currentUser?.name?.length ?: 0) > 12) 2.sp else 4.sp,
+                    fontFamily = FontFamily.SansSerif,
+                    lineHeight = 38.sp
                 )
 
                 Spacer(modifier = Modifier.weight(1f))

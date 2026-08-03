@@ -57,11 +57,14 @@ import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -99,6 +102,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -110,6 +114,7 @@ import coil.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.psl.pasalhub.R
 import com.psl.pasalhub.ai.domain.model.AiChatMessage
 import com.psl.pasalhub.ai.presentation.components.AiChatBubble
 import com.psl.pasalhub.ai.presentation.components.AiListeningAnimation
@@ -136,7 +141,10 @@ fun AISearchScreen(
     var searchQuery by remember { mutableStateOf("") }
     val dimens = LocalDimens.current
     val isAiProcessing by aiViewModel.isAiProcessing.collectAsStateWithLifecycle()
+    val showCancelDialog by aiViewModel.showCancelDialog.collectAsStateWithLifecycle()
     val aiSearchError by aiViewModel.aiSearchError.collectAsStateWithLifecycle()
+    val retryCount by aiViewModel.retryCount.collectAsStateWithLifecycle()
+    val requestCount by aiViewModel.requestCount.collectAsStateWithLifecycle()
     val productsState by aiViewModel.aiProductsState.collectAsStateWithLifecycle()
     val messages by aiViewModel.messages.collectAsStateWithLifecycle()
     val searchHistory by aiViewModel.searchHistory.collectAsStateWithLifecycle()
@@ -176,6 +184,7 @@ fun AISearchScreen(
     val username = user?.name?.split(" ")?.firstOrNull() ?: "Explorer"
 
     var showHistorySheet by remember { mutableStateOf(false) }
+    var showVisualSearchSheet by remember { mutableStateOf(false) }
     var isSearchFocused by remember { mutableStateOf(false) }
     val isKeyboardVisible = WindowInsets.isImeVisible
 
@@ -245,6 +254,20 @@ fun AISearchScreen(
                     }
                 },
                 actions = {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        Text(
+                            text = "$requestCount/${AiSearchViewModel.MAX_REQUESTS}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = if (requestCount >= AiSearchViewModel.MAX_REQUESTS) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(
                         onClick = { showHistorySheet = true },
                         modifier = Modifier.padding(end = 8.dp)
@@ -277,8 +300,11 @@ fun AISearchScreen(
                         .fillMaxWidth()
                 ) {
                     if (aiSearchError != null) {
-                        ErrorStateView(error = aiSearchError!!) {
-                            aiViewModel.performAiSearch("best deals")
+                        ErrorStateView(
+                            error = aiSearchError!!,
+                            retryCount = retryCount
+                        ) {
+                            aiViewModel.handleRetry()
                         }
                     } else {
                         ResultsOrHistory(
@@ -298,24 +324,20 @@ fun AISearchScreen(
                 }
 
                 // Modern Search Bar
+                val currentProductsState = productsState
+                val hasResults =
+                    currentProductsState is Resource.Success && currentProductsState.data.isNotEmpty()
+                val isProcessingVisible = isAiProcessing && !hasResults
+
                 SearchInputBar(
                     query = searchQuery,
                     onQueryChange = {
                         searchQuery = it
                         if (it.isEmpty()) aiViewModel.clearSearch()
                     },
-                    isProcessing = isAiProcessing,
+                    isProcessing = isProcessingVisible,
                     onFocusChange = { isSearchFocused = it },
-                    onCameraClick = {
-                        if (cameraPermissionState.status.isGranted) {
-                            cameraLauncher.launch()
-                        } else {
-                            cameraPermissionState.launchPermissionRequest()
-                        }
-                    },
-                    onGalleryClick = {
-                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
+                    onVisualSearchClick = { showVisualSearchSheet = true },
                     onSearch = {
                         if (searchQuery.isNotBlank()) {
                             keyboardController?.hide()
@@ -323,10 +345,105 @@ fun AISearchScreen(
                             aiViewModel.performAiSearch(searchQuery)
                             searchQuery = ""
                         }
-                    }
+                    },
+                    onCancel = { aiViewModel.requestCancel() }
                 )
 
                 // Branding Footer will appear here if needed or at the bottom of the list
+            }
+        }
+
+        if (showVisualSearchSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showVisualSearchSheet = false },
+                sheetState = rememberModalBottomSheetState(),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 48.dp)
+                ) {
+                    Text(
+                        "Visual Search",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    showVisualSearchSheet = false
+                                    if (cameraPermissionState.status.isGranted) {
+                                        cameraLauncher.launch()
+                                    } else {
+                                        cameraPermissionState.launchPermissionRequest()
+                                    }
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Rounded.PhotoCamera,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Camera", style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    showVisualSearchSheet = false
+                                    galleryLauncher.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
+                                    )
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Gallery", style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -404,6 +521,44 @@ fun AISearchScreen(
             }
         }
     }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { aiViewModel.resumeSearch() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.PauseCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Search Paused")
+                }
+            },
+            text = {
+                Text("AI is currently processing your request. Would you like to continue or stop?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = { aiViewModel.resumeSearch() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Continue Search")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { aiViewModel.confirmCancelSearch() }) {
+                    Text("Stop", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 }
 
 @Composable
@@ -412,9 +567,9 @@ fun SearchInputBar(
     onQueryChange: (String) -> Unit,
     isProcessing: Boolean,
     onFocusChange: (Boolean) -> Unit,
-    onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit,
-    onSearch: () -> Unit
+    onVisualSearchClick: () -> Unit,
+    onSearch: () -> Unit,
+    onCancel: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val borderAlpha by infiniteTransition.animateFloat(
@@ -482,17 +637,11 @@ fun SearchInputBar(
             )
 
             if (query.isEmpty() && !isProcessing) {
-                IconButton(onClick = onCameraClick) {
+                IconButton(onClick = onVisualSearchClick) {
                     Icon(
-                        Icons.Rounded.PhotoCamera,
-                        contentDescription = "Camera",
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                    )
-                }
-                IconButton(onClick = onGalleryClick) {
-                    Icon(
-                        Icons.Rounded.Image,
-                        contentDescription = "Gallery",
+                        modifier = Modifier.size(24.dp),
+                        painter = painterResource(id = R.drawable.visualsearch),
+                        contentDescription = "Visual Search",
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                     )
                 }
@@ -509,21 +658,27 @@ fun SearchInputBar(
             }
 
             IconButton(
-                onClick = onSearch,
-                enabled = !isProcessing && query.isNotBlank(),
+                onClick = { if (isProcessing) onCancel() else onSearch() },
+                enabled = isProcessing || query.isNotBlank(),
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        if (query.isNotBlank() && !isProcessing) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        when {
+                            isProcessing -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                            query.isNotBlank() -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        },
                         CircleShape
                     )
             ) {
                 Icon(
-                    Icons.AutoMirrored.Rounded.Send,
-                    contentDescription = "Send",
-                    tint = if (query.isNotBlank() && !isProcessing) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    if (isProcessing) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.Send,
+                    contentDescription = if (isProcessing) "Stop" else "Send",
+                    tint = when {
+                        isProcessing -> MaterialTheme.colorScheme.error
+                        query.isNotBlank() -> MaterialTheme.colorScheme.onPrimary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    },
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -679,7 +834,7 @@ fun ResultsOrHistory(
             }
         }
 
-        if (isAiProcessing) {
+        if (isAiProcessing && (productsState !is Resource.Success || productsState.data.isEmpty())) {
             item(key = "processing_animation") {
                 AiListeningAnimation(
                     modifier = Modifier
@@ -948,7 +1103,7 @@ fun AiResultProductCard(
 }
 
 @Composable
-fun ErrorStateView(error: String, onRetry: () -> Unit) {
+fun ErrorStateView(error: String, retryCount: Int = 0, onRetry: () -> Unit) {
     LaunchedEffect(error) {
         Log.d("AISearchScreen", "ErrorStateView shown with error: $error")
     }
@@ -989,7 +1144,7 @@ fun ErrorStateView(error: String, onRetry: () -> Unit) {
             onClick = onRetry,
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Try again")
+            Text(if (retryCount == 0) "Try again" else "Restart")
         }
     }
 }

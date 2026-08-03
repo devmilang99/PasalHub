@@ -105,4 +105,42 @@ class AppPreferencesRepositoryImpl @Inject constructor(
     override suspend fun setLastProductsSyncTime(timestamp: Long) {
         prefs.edit { putLong("last_products_sync_time", timestamp) }
     }
+
+    override fun getAiRequestCount(): Int {
+        checkAndResetDailyCounter()
+        return prefs.getInt("ai_request_count", 0)
+    }
+
+    override suspend fun incrementAiRequestCount() {
+        checkAndResetDailyCounter()
+        val current = prefs.getInt("ai_request_count", 0)
+        prefs.edit { putInt("ai_request_count", current + 1) }
+    }
+
+    override suspend fun resetAiRequestCount() {
+        prefs.edit {
+            putInt("ai_request_count", 0)
+            putLong("ai_request_last_date", System.currentTimeMillis())
+        }
+    }
+
+    private fun checkAndResetDailyCounter() {
+        val lastTimestamp = prefs.getLong("ai_request_last_date", 0L)
+        val currentTimestamp = System.currentTimeMillis()
+
+        if (!isSameDay(lastTimestamp, currentTimestamp)) {
+            prefs.edit {
+                putInt("ai_request_count", 0)
+                putLong("ai_request_last_date", currentTimestamp)
+            }
+        }
+    }
+
+    private fun isSameDay(t1: Long, t2: Long): Boolean {
+        if (t1 == 0L) return false
+        val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = t1 }
+        val cal2 = java.util.Calendar.getInstance().apply { timeInMillis = t2 }
+        return cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
+                cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
+    }
 }

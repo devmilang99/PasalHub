@@ -19,4 +19,8 @@ interface AppPreferencesRepository {
 
     fun getLastProductsSyncTime(): Long
     suspend fun setLastProductsSyncTime(timestamp: Long)
+
+    fun getAiRequestCount(): Int
+    suspend fun incrementAiRequestCount()
+    suspend fun resetAiRequestCount()
 }
