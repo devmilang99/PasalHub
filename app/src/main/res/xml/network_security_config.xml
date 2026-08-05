@@ -3,10 +3,25 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">supabase.co</domain>
         <pin-set>
-            <!-- ISRG Root X1 (Let's Encrypt Root CA) - Stable until 2035 -->
+            <!-- ISRG Root X1 (Let's Encrypt Root CA) -->
             <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
-            <!-- ISRG Root X2 (Backup Root CA) -->
+            <!-- ISRG Root X2 (Let's Encrypt Backup) -->
             <pin digest="SHA-256">cjS1ohj4E0iIOrmn2fJ0u4qJj07W9jOa5W8yWJ0J8O8=</pin>
+            <!-- DigiCert Global Root CA (Common Cloudflare Root) -->
+            <pin digest="SHA-256">r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=</pin>
+            <!-- GTS Root R1 (Google Trust Services / Cloudflare Root) -->
+            <pin digest="SHA-256">h6801mQo/PPLMBRR9Xv7OOf8fK6aLd9pC4ef12mTHu4=</pin>
         </pin-set>
     </domain-config>
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Allow system certificates to override pins in debug mode to facilitate proxy debugging -->
+            <certificates
+                overridePins="true"
+                src="system" />
+            <certificates
+                overridePins="true"
+                src="user" />
+        </trust-anchors>
+    </debug-overrides>
 </network-security-config>
