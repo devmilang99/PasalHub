@@ -23,4 +23,5 @@ interface InitialRepository {
 
     fun isFlowCompleted(): Flow<Boolean>
     fun getUser(): Flow<UserEntity?>
+    suspend fun verifySession(): Boolean
 }

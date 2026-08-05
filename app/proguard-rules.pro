@@ -1,21 +1,35 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Aggressive Obfuscation
+-repackageclasses ''
+-allowaccessmodification
+-overloadaggressively
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
+# Keep Line Numbers for crash reporting (optional, remove for max security)
 #-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Supabase & Ktor
+-keep class io.github.jan.supabase.** { *; }
+-keep class io.ktor.** { *; }
+
+# Hilt/Dagger
+-keep class dagger.hilt.** { *; }
+-keep class com.psl.pasalhub.core.di.** { *; }
+
+# Room
+-keep class androidx.room.** { *; }
+-keep class com.psl.pasalhub.core.database.data.** { *; }
+
+# Serialization
+-keepattributes *Annotation*, EnclosingMethod, Signature
+-keepclassmembers class ** {
+    @kotlinx.serialization.Serializable *;
+}
+
+# SQLCipher
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+
+# RootBeer
+-keep class com.scottyab.rootbeer.** { *; }
+
+# Jetpack Compose
+-keep class androidx.compose.** { *; }

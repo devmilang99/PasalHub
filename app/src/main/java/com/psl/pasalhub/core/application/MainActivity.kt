@@ -2,6 +2,7 @@ package com.psl.pasalhub.core.application
 
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
@@ -51,6 +53,7 @@ import com.psl.pasalhub.auth.login.viewmodel.LoginViewModel
 import com.psl.pasalhub.auth.register.viewmodel.RegisterViewModel
 import com.psl.pasalhub.core.application.domain.AppError
 import com.psl.pasalhub.core.application.presentation.AppViewModel
+import com.psl.pasalhub.core.application.utils.SecurityManager
 import com.psl.pasalhub.core.networking.remote.ProductDto
 import com.psl.pasalhub.core.viewmodel.MainViewModel
 import com.psl.pasalhub.dashboard.cart.ui.OrderReviewScreen
@@ -73,19 +76,40 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject
+    lateinit var securityManager: SecurityManager
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Security: Prevent screenshots and screen recording
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
+
         enableEdgeToEdge()
 
         // These ViewModels are shared or used for app-level state
         val mainViewModel: MainViewModel by viewModels()
         val appViewModel: AppViewModel by viewModels()
         val initialViewModel: InitialViewModel by viewModels()
+
+        // Security check
+        if (securityManager.isDeviceRooted()) {
+            appViewModel.setError(
+                AppError.Generic(
+                    "Security Warning",
+                    "This device is rooted. For your safety, Pasal Hub cannot run on compromised devices."
+                )
+            )
+        }
 
         setContent {
             val isDarkTheme by appViewModel.isDarkTheme.collectAsStateWithLifecycle()
@@ -139,7 +163,11 @@ fun GlobalErrorOverlay(
         )
 
         is AppError.Generic -> Triple(
-            Icons.Default.Error,
+            if (error.title.contains(
+                    "Security",
+                    ignoreCase = true
+                )
+            ) Icons.Default.Security else Icons.Default.Error,
             error.title,
             error.message
         )

@@ -15,6 +15,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SupportFactory
 import javax.inject.Singleton
 
 @Module
@@ -24,12 +26,18 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        // Use a secure key for production. For this example, we use a fixed key.
+        // In a real app, generate this key and store it in the Android Keystore.
+        val passphrase = SQLiteDatabase.getBytes("pasalhub-secure-key-2026".toCharArray())
+        val factory = SupportFactory(passphrase)
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "pasalhub_db"
         )
-            .fallbackToDestructiveMigration(true) // Keep this for version 1 dev, will replace with false once stable
+            .openHelperFactory(factory)
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 

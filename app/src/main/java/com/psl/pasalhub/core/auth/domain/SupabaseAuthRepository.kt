@@ -14,4 +14,5 @@ interface SupabaseAuthRepository {
     suspend fun completeGoogleOnboarding(password: String, address: String)
     suspend fun updatePassword(newPassword: String)
     fun currentUserEmail(): String?
+    suspend fun verifySession(): Boolean
 }

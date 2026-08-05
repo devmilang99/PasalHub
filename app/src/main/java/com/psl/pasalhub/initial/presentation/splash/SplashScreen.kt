@@ -53,6 +53,7 @@ fun SplashScreen(
 ) {
     val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
+    val isSessionValid by viewModel.isSessionValid.collectAsState()
     val isDark by viewModel.isDarkTheme.collectAsState()
     val fadeAnim = remember { Animatable(0f) }
     var isAutologinActive by remember { mutableStateOf(false) }
@@ -69,14 +70,20 @@ fun SplashScreen(
 
         if (currentUser?.isRemembered == true) {
             isAutologinActive = true
-            delay(2000)
-            onNavigateNext()
+            viewModel.verifySession()
         } else {
             fadeAnim.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = 1000)
             )
             delay(1500)
+            onNavigateNext()
+        }
+    }
+
+    LaunchedEffect(isSessionValid) {
+        if (isAutologinActive && isSessionValid != null) {
+            delay(1000)
             onNavigateNext()
         }
     }

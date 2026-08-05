@@ -129,6 +129,20 @@ class SupabaseAuthRepositoryImpl @Inject constructor(
         return auth.currentUserOrNull()?.email
     }
 
+    override suspend fun verifySession(): Boolean {
+        return try {
+            auth.refreshCurrentSession()
+            val isValid = auth.currentUserOrNull() != null
+            if (!isValid) {
+                userDao.clearUser()
+            }
+            isValid
+        } catch (e: Exception) {
+            userDao.clearUser()
+            false
+        }
+    }
+
     private fun syncUserProfile() {
         // Trigger the sequential multi-step sync chain for login
         syncManager.triggerLoginSync()

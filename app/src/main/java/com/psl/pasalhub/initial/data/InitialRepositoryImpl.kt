@@ -94,4 +94,8 @@ class InitialRepositoryImpl @Inject constructor(
     }
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()
+
+    override suspend fun verifySession(): Boolean {
+        return authRepository.verifySession()
+    }
 }

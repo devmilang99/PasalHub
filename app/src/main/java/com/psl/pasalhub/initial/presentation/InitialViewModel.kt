@@ -7,8 +7,10 @@ import com.psl.pasalhub.core.application.domain.AppPreferencesRepository
 import com.psl.pasalhub.core.database.data.UserEntity
 import com.psl.pasalhub.initial.domain.InitialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -57,6 +59,15 @@ class InitialViewModel @Inject constructor(
 
     val currentUser: StateFlow<UserEntity?> = repository.getUser()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val _isSessionValid = MutableStateFlow<Boolean?>(null)
+    val isSessionValid: StateFlow<Boolean?> = _isSessionValid.asStateFlow()
+
+    fun verifySession() {
+        viewModelScope.launch {
+            _isSessionValid.value = repository.verifySession()
+        }
+    }
 
     fun completeOnboarding() {
         viewModelScope.launch {
