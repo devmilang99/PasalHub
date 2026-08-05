@@ -65,7 +65,7 @@ tensorflowLiteSupport = "0.5.0"
 tensorflowLiteMetadata = "0.2.0"
 tensorflowLite = "2.17.0"
 securityCrypto = "1.1.0"
-sqlcipher = "4.5.4"
+sqlcipher = "4.17.0"
 playIntegrity = "1.6.0"
 rootbeer = "0.1.2"
 
@@ -163,7 +163,7 @@ tensorflow-lite-support = { group = "org.tensorflow", name = "tensorflow-lite-su
 tensorflow-lite-metadata = { group = "org.tensorflow", name = "tensorflow-lite-metadata", version.ref = "tensorflowLiteMetadata" }
 tensorflow-lite = { group = "org.tensorflow", name = "tensorflow-lite", version.ref = "tensorflowLite" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
-sqlcipher-android = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
+sqlcipher-android = { group = "net.zetetic", name = "sqlcipher-android", version.ref = "sqlcipher" }
 play-services-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
 rootbeer-android = { group = "com.scottyab", name = "rootbeer-lib", version.ref = "rootbeer" }
 

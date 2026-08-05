@@ -30,6 +30,9 @@ class PasalHubApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // Load SQLCipher native libraries
+        System.loadLibrary("sqlcipher")
+
         // Observe Connectivity
         applicationScope.launch {
             val observer = ConnectivityObserver(applicationContext)
