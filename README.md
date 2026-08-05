@@ -39,33 +39,33 @@ offline-first.
 
 ### 🔑 Authentication & Discovery
 
-|            Login Screen            |          Home Dashboard          |                   Product Details                    |
-|:----------------------------------:|:--------------------------------:|:----------------------------------------------------:|
-| ![Login](screenshots/01_login.png) | ![Home](screenshots/02_home.png) | ![Product Detail](screenshots/03_product_detail.png) |
+|                    Login Screen                    |                  Home Dashboard                   |                       Product Details                       |
+|:--------------------------------------------------:|:-------------------------------------------------:|:-----------------------------------------------------------:|
+| <img src="screenshots/01_login.png" width="200" /> | <img src="screenshots/02_home.png" width="200" /> | <img src="screenshots/03_product_detail.png" width="200" /> |
 
 ### 🤖 AI Assistant
 
-|                 AI Initial Page                 |                 AI Search Results                  |
-|:-----------------------------------------------:|:--------------------------------------------------:|
-| ![AI Initial](screenshots/12_ai_initial.png)    | ![AI Search Results](screenshots/13_ai_search_results.png) |
+|                     AI Initial Page                     |                       AI Search Results                        |
+|:-------------------------------------------------------:|:--------------------------------------------------------------:|
+| <img src="screenshots/12_ai_initial.png" width="200" /> | <img src="screenshots/13_ai_search_results.png" width="200" /> |
 
 ### 🛒 Shopping Flow
 
-|             My Cart              |                 Checkout                 |                   Review Order                   |
-|:--------------------------------:|:----------------------------------------:|:------------------------------------------------:|
-| ![Cart](screenshots/04_cart.png) | ![Checkout](screenshots/05_checkout.png) | ![Review Order](screenshots/06_review_order.png) |
+|                      My Cart                      |                       Checkout                        |                       Review Order                        |
+|:-------------------------------------------------:|:-----------------------------------------------------:|:---------------------------------------------------------:|
+| <img src="screenshots/04_cart.png" width="200" /> | <img src="screenshots/05_checkout.png" width="200" /> | <img src="screenshots/06_review_order.png" width="200" /> |
 
 ### 📦 Order Management & Tracking
 
-|                   Recent Orders                    |                   Live Tracking                    |                     Completed Orders                     |                    Cancelled Orders                    |
-|:--------------------------------------------------:|:--------------------------------------------------:|:--------------------------------------------------------:|:-----------------------------------------------------:|
-| ![Recent Orders](screenshots/07_recent_orders.png) | ![Live Tracking](screenshots/08_live_tracking.png) | ![Completed Orders](screenshots/09_completed_orders.png) | ![Cancelled Orders](screenshots/10_cancelled_orders.png) |
+|                       Recent Orders                        |                       Live Tracking                        |                       Completed Orders                        |                       Cancelled Orders                        |
+|:----------------------------------------------------------:|:----------------------------------------------------------:|:-------------------------------------------------------------:|:-------------------------------------------------------------:|
+| <img src="screenshots/07_recent_orders.png" width="200" /> | <img src="screenshots/08_live_tracking.png" width="200" /> | <img src="screenshots/09_completed_orders.png" width="200" /> | <img src="screenshots/10_cancelled_orders.png" width="200" /> |
 
 ### 👤 Personalization & Support
 
-|              User Profile              |
-|:--------------------------------------:|
-| ![Profile](screenshots/11_profile.png) |
+|                     User Profile                     |
+|:----------------------------------------------------:|
+| <img src="screenshots/11_profile.png" width="200" /> |
 
 ---
 
