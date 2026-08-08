@@ -10,6 +10,9 @@
 -keep class io.github.jan.supabase.** { *; }
 -keep class io.ktor.** { *; }
 
+# Java Management (required by Ktor debug detector)
+-keep class java.lang.management.** { *; }
+
 # Hilt/Dagger
 -keep class dagger.hilt.** { *; }
 -keep class com.psl.pasalhub.core.di.** { *; }
