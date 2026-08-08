@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verification:
-    name: Verification (Lint & Tests)
+    name: Android Debug Apk Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,20 +39,6 @@ jobs:
 
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest
-
-      - name: Build Release AAB
-        run: ./gradlew bundleRelease
-        env:
-          RELEASE_KEYSTORE_PATH: ${{ secrets.RELEASE_KEYSTORE_PATH }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-
-      - name: Upload Release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: app/build/outputs/bundle/release/*.aab
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
