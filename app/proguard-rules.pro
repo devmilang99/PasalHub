@@ -36,3 +36,7 @@
 
 # Jetpack Compose
 -keep class androidx.compose.** { *; }
+
+#Ktor
+-keep class io.ktor.** { *; }
+-dontwarn io.ktor.**
