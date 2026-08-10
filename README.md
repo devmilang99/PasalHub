@@ -12,8 +12,8 @@
 
 # 🛒 PasalHub
 
-**A next-generation native Android marketplace built for speed, intelligence, and seamless shopping.
-**
+**A next-generation native Android marketplace built for speed, intelligence, and seamless shopping.**
+
 Discover, search, and shop — powered by on-device AI and real-time sync.
 
 [Features](#-features) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [Contributing](#-contributing)
