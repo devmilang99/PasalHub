@@ -12,11 +12,12 @@
 
 # 🛒 PasalHub
 
-**A next-generation native Android marketplace built for speed, intelligence, and seamless shopping.**
+**A next-generation native Android marketplace built for speed, intelligence, and seamless shopping.
+**
 
 Discover, search, and shop — powered by on-device AI and real-time sync.
 
-[Features](#-features) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [Contributing](#-contributing)
+[Features](#-features) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [Installation Guide](#-installation-guide) · [Contributing](#-contributing)
 
 ---
 
@@ -158,7 +159,7 @@ app/src/main/java/com/psl/pasalhub/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/PasalHub.git
+   git clone https://github.com/devmilang99/PasalHub.git
    ```
 
 2. **Configure Secrets**
@@ -172,6 +173,15 @@ app/src/main/java/com/psl/pasalhub/
 3. **Build & Run**
    Open in Android Studio and run. The `generateLocalKeystore` task will handle debug signing
    automatically.
+
+## 📥 Installation Guide
+
+For recruiters or users who want to try the app without building from source:
+
+* **[APK Download & Installation Guide](APK_DOWNLOAD_GUIDE.md)** — Step-by-step instructions to
+  download and install the latest APK on your device.
+* **[Download Latest APK](https://github.com/devmilang99/PasalHub/releases/tag/latest-debug)** —
+  Direct link to the latest build.
 
 ---
 
