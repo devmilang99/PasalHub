@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     alias(libs.plugins.baselineprofile.plugin)
-    kotlin("plugin.serialization") version "2.4.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version libs.versions.kotlin.get()
 }
 
 tasks.register("generateLocalKeystore") {
@@ -130,7 +130,7 @@ android {
     }
     sourceSets {
         getByName("main") {
-            assets.srcDirs("../assets")
+            assets.directories.add("../assets")
         }
     }
     testOptions { unitTests { isIncludeAndroidResources = true } }

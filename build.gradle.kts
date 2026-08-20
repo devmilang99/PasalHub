@@ -2,7 +2,6 @@
 plugins {
   alias(libs.plugins.android.application) apply false
   alias(libs.plugins.agp.test) apply false
-  alias(libs.plugins.android.kotlin) apply false
   alias(libs.plugins.compose.plugin) apply false
   alias(libs.plugins.google.devtools.ksp) apply false
   alias(libs.plugins.roborazzi) apply false
@@ -11,4 +10,3 @@ plugins {
   alias(libs.plugins.google.services) apply false
   alias(libs.plugins.baselineprofile.plugin) apply false
 }
-
