@@ -70,8 +70,9 @@ android {
     signingConfigs {
         getByName("debug") {
             val keystorePath = System.getenv("KEYSTORE_PATH")
-            if (keystorePath != null) {
-                storeFile = rootProject.file(keystorePath)
+            val customKeystore = keystorePath?.let { rootProject.file(it) }
+            if (customKeystore?.exists() == true) {
+                storeFile = customKeystore
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
@@ -237,4 +238,6 @@ configurations.all {
             useVersion(libs.versions.ktor.get())
         }
     }
+    // Resolve LiteRT namespace conflict (org.tensorflow.lite.support)
+    exclude(group = "com.google.ai.edge.litert", module = "litert-support-api")
 }
