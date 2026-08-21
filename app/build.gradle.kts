@@ -7,42 +7,8 @@ plugins {
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.secrets)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.google.services)
     alias(libs.plugins.baselineprofile.plugin)
     id("org.jetbrains.kotlin.plugin.serialization") version libs.versions.kotlin.get()
-}
-
-tasks.register("generateLocalKeystore") {
-    description = ""
-    val keystoreFile = file("${rootDir}/local-debug.keystore")
-    outputs.file(keystoreFile)
-
-    doLast {
-        if (!keystoreFile.exists()) {
-            println("Generating local debug keystore...")
-            val command = listOf(
-                "keytool", "-genkey", "-v",
-                "-keystore", keystoreFile.absolutePath,
-                "-alias", "androiddebugkey",
-                "-keyalg", "RSA",
-                "-keysize", "2048",
-                "-validity", "10000",
-                "-keypass", "android",
-                "-storepass", "android",
-                "-dname", "CN=Android Debug,O=Android,C=US"
-            )
-            val process = ProcessBuilder(command).inheritIO().start()
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                throw GradleException("Failed to generate local debug keystore. Exit code: $exitCode")
-            }
-        }
-    }
-}
-
-// Ensure the keystore is generated before any build task
-tasks.matching { it.name.startsWith("preBuild") }.configureEach {
-    dependsOn("generateLocalKeystore")
 }
 
 val dbVersion = 1
@@ -85,19 +51,11 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            val keystorePath = getSecret("KEYSTORE_PATH")
-            val customKeystore = keystorePath?.let { rootProject.file(it) }
-            if (customKeystore?.exists() == true) {
-                storeFile = customKeystore
-                storePassword = getSecret("STORE_PASSWORD")
-                keyAlias = getSecret("KEY_ALIAS")
-                keyPassword = getSecret("KEY_PASSWORD")
-            } else {
-                storeFile = file("${rootDir}/local-debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
-            }
+            val keystorePath = getSecret("KEYSTORE_PATH") ?: "my-upload-key.jks"
+            storeFile = rootProject.file(keystorePath)
+            storePassword = getSecret("STORE_PASSWORD") ?: "android"
+            keyAlias = getSecret("KEY_ALIAS") ?: "upload"
+            keyPassword = getSecret("KEY_PASSWORD") ?: "android"
         }
 
         create("release") {
@@ -192,8 +150,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.ai)
     implementation(libs.googleid)
     implementation(libs.errorprone.annotations)
     implementation(libs.kotlinx.coroutines.android)

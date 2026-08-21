@@ -56,8 +56,6 @@ kotlinx-serialization-json = "1.11.0"
 supabase = "3.7.0"
 ktor = "3.5.2"
 uiautomator = "2.4.0"
-firebaseBom = "34.18.0"
-googleServices = "4.5.0"
 generativeai = "0.9.0"
 appfunctions = "1.0.0-alpha10"
 appfunctions-service = "1.0.0-alpha09"
@@ -123,8 +121,6 @@ roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "robora
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito-kotlin" }
 
-firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
 generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
@@ -178,6 +174,5 @@ google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDev
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
-google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 baselineprofile-plugin = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
