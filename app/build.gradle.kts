@@ -51,6 +51,22 @@ val signingProps = file("${rootDir}/signing.properties").takeIf { it.exists() }?
     Properties().apply { load(it.inputStream()) }
 }
 
+val envProps = file("${rootDir}/.env").takeIf { it.exists() }?.let {
+    Properties().apply {
+        it.readLines().forEach { line ->
+            val parts = line.split("=", limit = 2)
+            if (parts.size == 2) {
+                setProperty(parts[0].trim(), parts[1].trim())
+            }
+        }
+    }
+}
+
+fun getSecret(key: String, defaultValue: String? = null): String? {
+    return System.getenv(key) ?: envProps?.getProperty(key) ?: signingProps?.getProperty(key)
+    ?: defaultValue
+}
+
 android {
     namespace = "com.psl.pasalhub"
     compileSdk = 37
@@ -69,13 +85,13 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            val keystorePath = System.getenv("KEYSTORE_PATH")
+            val keystorePath = getSecret("KEYSTORE_PATH")
             val customKeystore = keystorePath?.let { rootProject.file(it) }
             if (customKeystore?.exists() == true) {
                 storeFile = customKeystore
-                storePassword = System.getenv("STORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                storePassword = getSecret("STORE_PASSWORD")
+                keyAlias = getSecret("KEY_ALIAS")
+                keyPassword = getSecret("KEY_PASSWORD")
             } else {
                 storeFile = file("${rootDir}/local-debug.keystore")
                 storePassword = "android"
@@ -85,16 +101,12 @@ android {
         }
 
         create("release") {
-            val keystorePath =
-                signingProps?.getProperty("RELEASE_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
-                ?: "my-upload-key.jks"
+            val keystorePath = getSecret("RELEASE_KEYSTORE_PATH") ?: getSecret("KEYSTORE_PATH")
+            ?: "my-upload-key.jks"
             storeFile = rootProject.file(keystorePath)
-            storePassword = signingProps?.getProperty("RELEASE_STORE_PASSWORD")
-                ?: System.getenv("STORE_PASSWORD")
-            keyAlias = signingProps?.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
-                    ?: "upload"
-            keyPassword =
-                signingProps?.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
+            storePassword = getSecret("RELEASE_STORE_PASSWORD") ?: getSecret("STORE_PASSWORD")
+            keyAlias = getSecret("RELEASE_KEY_ALIAS") ?: getSecret("KEY_ALIAS") ?: "upload"
+            keyPassword = getSecret("RELEASE_KEY_PASSWORD") ?: getSecret("KEY_PASSWORD")
         }
     }
 

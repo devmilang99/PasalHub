@@ -37,6 +37,10 @@ jobs:
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "KEYSTORE_PATH=my-upload-key.jks" >> .env
+          echo "STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> .env
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> .env
 
       - name: Run Lint
         run: ./gradlew lintDebug
@@ -72,10 +76,15 @@ jobs:
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "KEYSTORE_PATH=my-upload-key.jks" >> .env
+          echo "STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> .env
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> .env
+      
 
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > app/my-upload-key.jks
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > my-upload-key.jks
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
