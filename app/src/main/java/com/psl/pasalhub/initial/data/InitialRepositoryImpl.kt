@@ -57,6 +57,10 @@ class InitialRepositoryImpl @Inject constructor(
         appPrefs.setTheme(isDark)
     }
 
+    override suspend fun completeInitialFlow() {
+        appPrefs.setInitialSetupDone(true)
+    }
+
     override fun getLocationPermission(): Flow<Boolean> = _locationGranted.asStateFlow()
     override fun getCameraPermission(): Flow<Boolean> = _cameraGranted.asStateFlow()
     override fun getStoragePermission(): Flow<Boolean> = _storageGranted.asStateFlow()
@@ -82,16 +86,7 @@ class InitialRepositoryImpl @Inject constructor(
         _notificationGranted.value = granted
     }
 
-    override fun isFlowCompleted(): Flow<Boolean> = combine(
-        _onboardingCompleted,
-        appPrefs.isThemeSet(),
-        _locationGranted,
-        _cameraGranted,
-        _storageGranted,
-        _notificationGranted
-    ) { values ->
-        values.all { it as Boolean }
-    }
+    override fun isFlowCompleted(): Flow<Boolean> = appPrefs.isInitialSetupDone()
 
     override fun getUser(): Flow<UserEntity?> = userDao.getUser()
 

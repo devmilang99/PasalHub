@@ -81,6 +81,12 @@ class InitialViewModel @Inject constructor(
         }
     }
 
+    fun completeInitialFlow() {
+        viewModelScope.launch {
+            repository.completeInitialFlow()
+        }
+    }
+
     fun setLocationPermission(granted: Boolean) {
         viewModelScope.launch {
             repository.setLocationPermission(granted)

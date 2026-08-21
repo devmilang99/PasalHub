@@ -10,6 +10,7 @@ interface InitialRepository {
     fun isThemeSet(): Flow<Boolean>
     fun isDarkTheme(): Flow<Boolean>
     suspend fun setTheme(isDark: Boolean)
+    suspend fun completeInitialFlow()
 
     fun getLocationPermission(): Flow<Boolean>
     fun getCameraPermission(): Flow<Boolean>

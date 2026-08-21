@@ -248,7 +248,7 @@ fun PasalHubNavHost(
                         "Splash -> OnboardingDone: $isOnboardingDone, FlowCompleted: $isFlowCompleted, User: ${currentUser?.email}"
                     )
 
-                    if (currentUser?.isRemembered == true) {
+                    if (currentUser != null) {
                         if (currentUser.isGoogleUser && !currentUser.isProfileComplete) {
                             navController.navigate("google_onboarding") {
                                 popUpTo("splash") { inclusive = true }
@@ -275,7 +275,6 @@ fun PasalHubNavHost(
                             popUpTo("splash") { inclusive = true }
                         }
                     } else {
-                        // Fallback to login if we can't decide but onboarding is done
                         navController.navigate("login") {
                             popUpTo("splash") { inclusive = true }
                         }

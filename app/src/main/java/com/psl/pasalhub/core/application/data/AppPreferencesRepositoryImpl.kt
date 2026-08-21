@@ -34,6 +34,8 @@ class AppPreferencesRepositoryImpl @Inject constructor(
 
     private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", true))
     private val _isThemeSet = MutableStateFlow(prefs.getBoolean("theme_set", false))
+    private val _isInitialSetupDone =
+        MutableStateFlow(prefs.getBoolean("initial_setup_done", false))
     private val _notificationEvent = MutableSharedFlow<String>()
     private val _globalError = MutableStateFlow<AppError?>(null)
 
@@ -53,6 +55,8 @@ class AppPreferencesRepositoryImpl @Inject constructor(
 
     override fun isThemeSet(): Flow<Boolean> = _isThemeSet.asStateFlow()
 
+    override fun isInitialSetupDone(): Flow<Boolean> = _isInitialSetupDone.asStateFlow()
+
     override suspend fun toggleTheme() {
         val newValue = !_isDarkTheme.value
         setTheme(newValue)
@@ -65,6 +69,13 @@ class AppPreferencesRepositoryImpl @Inject constructor(
         }
         _isDarkTheme.value = isDark
         _isThemeSet.value = true
+    }
+
+    override suspend fun setInitialSetupDone(done: Boolean) {
+        prefs.edit {
+            putBoolean("initial_setup_done", done)
+        }
+        _isInitialSetupDone.value = done
     }
 
     override fun getNotificationEvent(): Flow<String> = _notificationEvent.asSharedFlow()
